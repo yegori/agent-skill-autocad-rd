@@ -1,0 +1,11 @@
+# сборки и временное
+toolkit/spds_text/bin/
+__pycache__/
+*.pyc
+*.bak
+*.dwl
+*.dwl2
+plot.log
+# секреты бота
+.env
+*.token
