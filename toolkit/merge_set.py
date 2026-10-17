@@ -1,6 +1,7 @@
 # Сводный PDF комплекта: первые N страниц обложки (обложка + титул) + все «NNN *.pdf» из папки листов по номерам.
 # python -I merge_set.py <итог.pdf> <папка листов> [<обложка.pdf> [N=2]]
 # Обложка может быть тем же файлом, что и итог (берутся его первые N страниц) — запись через временный файл.
+import sys; sys.stdout.reconfigure(encoding='utf-8', errors='replace')  # python -I игнорирует PYTHONIOENCODING; в pwsh: [Console]::OutputEncoding = [Text.Encoding]::UTF8
 import glob, os, sys
 import pymupdf
 

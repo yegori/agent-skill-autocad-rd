@@ -15,6 +15,7 @@ $bak = Join-Path $WorkRoot ("backup\txtfix_" + (Get-Date -Format "yyyyMMdd_HHmms
 $dll = "$PSScriptRoot\bin\SpdsText.dll"; if (-not (Test-Path $dll)) { & "$PSScriptRoot\build_txtfix.ps1" }
 $w = Join-Path $WorkRoot "txtfix"; Remove-Item $w -Recurse -Force -ErrorAction SilentlyContinue
 $jobs = Copy-DwgToWork $Files $w
+$jobs | ForEach-Object { "$($_.N)`t$($_.Src)" } | Set-Content (Join-Path $w "map.txt") -Encoding utf8   # копия <начало имени>~N.dwg -> исходник (для find_codes.py)
 # dll — в рабочую папку: путь без кириллицы (иначе NETLOAD из .scr не находит файл) и исходная dll не блокируется
 $dllW = Join-Path $WorkRoot ("txtfix_dll\SpdsText_" + (Get-Date -Format "yyyyMMdd_HHmmss") + ".dll")   # уникальное имя: старую копию может держать другой acad.exe
 New-Item -ItemType Directory -Force (Split-Path $dllW) | Out-Null; Copy-Item $dll $dllW -Force
@@ -54,7 +55,9 @@ foreach ($j in $jobs) {
   if ($Apply -and -not $Dry -and $n -gt 0 -and (Test-Path $fix)) {
     if (-not (Test-FileFree $j.Src)) { "   !!! открыт у пользователя — не заменён (исправленная копия: $fix)"; continue }
     New-Item -ItemType Directory -Force $bak | Out-Null
-    Copy-Item -LiteralPath $j.Src "$bak\f$($j.N)_$(Split-Path $j.Src -Leaf)" -Force
+    try { Copy-Item -LiteralPath $j.Src "$bak\f$($j.N)_$(Split-Path $j.Src -Leaf)" -Force -ErrorAction Stop
+          if ((Get-Item -LiteralPath "$bak\f$($j.N)_$(Split-Path $j.Src -Leaf)").Length -ne (Get-Item -LiteralPath $j.Src).Length) { throw "размер копии не совпадает с оригиналом" } }
+    catch { "   !!! резервная копия не создана — исходник НЕ заменён: $($_.Exception.Message)"; continue }
     Copy-Item $fix -Destination $j.Src -Force; "   заменён"
   }
 }

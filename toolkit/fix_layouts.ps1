@@ -39,7 +39,9 @@ $did = @($res | Where-Object { $_ -match '^(DEL|REN)\|' })
 if ($Apply -and $did -and -not $bad) {
   if (-not (Test-FileFree $File)) { "   !!! открыт у пользователя — не заменён"; return }
   New-Item -ItemType Directory -Force $bak | Out-Null
-  Copy-Item -LiteralPath $File (Join-Path $bak (Split-Path $File -Leaf)) -Force
+  try { Copy-Item -LiteralPath $File (Join-Path $bak (Split-Path $File -Leaf)) -Force -ErrorAction Stop
+        if ((Get-Item -LiteralPath (Join-Path $bak (Split-Path $File -Leaf))).Length -ne (Get-Item -LiteralPath $File).Length) { throw "размер копии не совпадает с оригиналом" } }
+  catch { "   !!! резервная копия не создана — исходник НЕ заменён: $($_.Exception.Message)"; return }
   Copy-Item $j.Work -Destination $File -Force; "   заменён (оригинал: $bak)"
 } elseif ($Apply -and $bad) { "   !!! есть замечания — исходник НЕ заменён" }
 elseif (-not $Apply) { "   (пробный прогон: исходник не тронут)" }

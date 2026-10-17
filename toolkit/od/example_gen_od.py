@@ -1,6 +1,7 @@
 # ШАБЛОН генератора ОД. Скопировать в _claude проекта, заполнить HANDLES (из своего образца) и DATA (по своим листам).
 # Запуск через build_od.ps1:  python -I gen.py <base.dxf> <out_dir> <key>
 # Живые примеры: «РОИНГ\Архыз ВО…\Водопропуски\_claude\скрипты\gen_od.py» и «…\площадной дренаж\_claude\скрипты\gen_od_pd.py».
+import sys; sys.stdout.reconfigure(encoding='utf-8', errors='replace')  # python -I игнорирует PYTHONIOENCODING; в pwsh: [Console]::OutputEncoding = [Text.Encoding]::UTF8
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))   # od_lib рядом; если генератор лежит в проекте — указать путь к od
 from od_lib import Tables, set_mtext, set_attr, delete_handles, old_table_entities, write_scr, BULLET, ITEM, SUBHEAD

@@ -4,6 +4,7 @@
 #   "UserDefinedMetric (594.00 x 1682.00мм)"  — ширина x высота, мм.
 # python -I add_pmp_size.py "UserDefinedMetric (594.00 x 1682.00мм)" ["UserDefinedMetric (841.00 x 1783.00мм)" …] [--pmp путь]
 # Перед записью кладёт копию рядом: «DWG To PDF.pmp.bak_ГГГГММДД_ЧЧММСС». Уже существующие имена пропускает.
+import sys; sys.stdout.reconfigure(encoding='utf-8', errors='replace')  # python -I игнорирует PYTHONIOENCODING; в pwsh: [Console]::OutputEncoding = [Text.Encoding]::UTF8
 import json, os, re, shutil, sys, datetime
 
 args = sys.argv[1:]

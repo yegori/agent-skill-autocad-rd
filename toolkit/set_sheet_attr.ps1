@@ -39,7 +39,9 @@ foreach ($j in $jobs) {
   if ($Apply -and $ok.Count -gt 0 -and -not $bad) {
     if (-not (Test-FileFree $j.Src)) { "   !!! открыт у пользователя — не заменён"; continue }
     New-Item -ItemType Directory -Force $bak | Out-Null
-    Copy-Item -LiteralPath $j.Src "$bak\f$($j.N)_$(Split-Path $j.Src -Leaf)" -Force
+    try { Copy-Item -LiteralPath $j.Src "$bak\f$($j.N)_$(Split-Path $j.Src -Leaf)" -Force -ErrorAction Stop
+          if ((Get-Item -LiteralPath "$bak\f$($j.N)_$(Split-Path $j.Src -Leaf)").Length -ne (Get-Item -LiteralPath $j.Src).Length) { throw "размер копии не совпадает с оригиналом" } }
+    catch { "   !!! резервная копия не создана — исходник НЕ заменён: $($_.Exception.Message)"; continue }
     Copy-Item $j.Work -Destination $j.Src -Force; "   заменён (оригинал: $bak)"
   }
 }
