@@ -14,7 +14,9 @@ if cover:
     doc.insert_pdf(c, from_page=0, to_page=min(n, len(c)) - 1)
     c.close()
 files = sorted(glob.glob(os.path.join(sheets, '[0-9][0-9][0-9] *.pdf')))
-for f in files:
+# PDF без номера (прилагаемые: «ЗД-1 Закладная деталь.pdf» и т.п.) — в конец, иначе выпали бы из сводного
+extra = sorted(f for f in glob.glob(os.path.join(sheets, '*.pdf')) if f not in files)
+for f in files + extra:
     with pymupdf.open(f) as s:
         doc.insert_pdf(s)
 tmp = out + '.tmp'
@@ -22,4 +24,4 @@ doc.save(tmp, garbage=3, deflate=True)
 pages = len(doc)
 doc.close()
 os.replace(tmp, out)
-print(f'сводный PDF: {pages} стр. (обложка {n if cover else 0} + листов {len(files)}) -> {out}')
+print(f'сводный PDF: {pages} стр. (обложка {n if cover else 0} + листов {len(files)} + прилагаемых {len(extra)}) -> {out}')

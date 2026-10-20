@@ -1,12 +1,14 @@
 """Сравнение PDF: старая выдача против новой (основа регрессии R1 и проверки «PDF актуальны»).
 
-  python -I compare_pdfs.py <старый.pdf|папка> <новый.pdf|папка> [--dpi 30] [--diff-out <папка>] [--threshold 60]
+  python -I compare_pdfs.py <старый.pdf|папка> <новый.pdf|папка> [--dpi 150] [--diff-out <папка>] [--threshold 60]
 
 * Два файла — постранично. Две папки — листы сопоставляются по номеру в начале имени («003 …»), иначе по имени.
 * Для каждой пары: совпадает ли формат страниц; есть ли отличия и ГДЕ: «только штамп» (подписи-картинки сглаживаются
   по-разному при каждой печати — шум) или «ОТЛИЧАЕТСЯ» (отличия на поле чертежа; область в мм от левого верхнего угла).
   Долю пикселей для решения НЕ использовать: правка одного числа (+1885,86 → +2113,10 на листе А1) = 0,0006%.
-* --diff-out: для отличающихся страниц — картинка «было | стало» по области отличий (dpi 60).
+* dpi 150 по умолчанию: при 100 замена одной цифры в тексте h 2,5 («25х40» → «20х40») не отличалась от шума.
+* Соседние пятна (ближе --merge-mm) склеиваются в области; выводятся все области (не первые N пятен).
+* --diff-out: для отличающихся страниц — картинка «было | стало» на каждую область (dpi 120, до --max-images на страницу).
 """
 import sys; sys.stdout.reconfigure(encoding='utf-8', errors='replace')  # python -I игнорирует PYTHONIOENCODING; в pwsh: [Console]::OutputEncoding = [Text.Encoding]::UTF8
 import argparse, glob, json, os, re, sys
@@ -37,6 +39,24 @@ def pairs(a, b):
             yield i + 1, a, b, pa, pb
 
 
+def merge_boxes(boxes, gap):
+    """Объединить прямоугольники [x0,y0,x1,y1] (мм), находящиеся ближе gap, до неподвижной точки; порядок — сверху вниз."""
+    bs = [list(b) for b in boxes]
+    changed = True
+    while changed:
+        changed = False
+        out = []
+        for b in bs:
+            for o in out:
+                if b[0] <= o[2] + gap and o[0] <= b[2] + gap and b[1] <= o[3] + gap and o[1] <= b[3] + gap:
+                    o[:] = [min(o[0], b[0]), min(o[1], b[1]), max(o[2], b[2]), max(o[3], b[3])]; changed = True
+                    break
+            else:
+                out.append(b)
+        bs = out
+    return sorted(bs, key=lambda b: (b[1], b[0]))
+
+
 def gray(p, dpi):
     pm = p.get_pixmap(dpi=dpi, colorspace=pymupdf.csGRAY)
     return pm
@@ -45,9 +65,11 @@ def gray(p, dpi):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('old'); ap.add_argument('new')
-    ap.add_argument('--dpi', type=int, default=100); ap.add_argument('--threshold', type=int, default=60)
+    ap.add_argument('--dpi', type=int, default=150); ap.add_argument('--threshold', type=int, default=60)
     ap.add_argument('--min-px', type=int, default=30, help='мин. размер скопления отличий (пикс. при --dpi), меньше — шум')
     ap.add_argument('--diff-out'); ap.add_argument('--json')
+    ap.add_argument('--merge-mm', type=float, default=8, help='пятна ближе этого расстояния (мм) — одна область')
+    ap.add_argument('--max-images', type=int, default=20, help='сколько картинок «было | стало» на страницу (области — все)')
     ap.add_argument('--stamp-mm', type=float, nargs=2, default=[190, 60], help='зона штампа в правом нижнем углу, мм')
     a = ap.parse_args()
     res = []
@@ -83,21 +105,24 @@ def main():
         st = ('совпадает' if not diff else 'ОТЛИЧАЕТСЯ' if field else
               'только штамп (подписи?)' if real else 'шум печати (одиночные пиксели)')
         row = {'лист': k, 'статус': st, 'отличий_%': round(pct, 4)}
-        if field:
-            row['области_мм'] = [r['мм'] for r in field][:8]
-        if a.diff_out and field:
-            from PIL import Image, ImageChops
+        # Склейка соседних пятен в области (строка текста при высоком dpi — десятки пятен). Выводятся ВСЕ области:
+        # раньше список обрезался до 8 пятен, и правка «25х40 → 20х40» ниже первой правленой строки не попадала в отчёт.
+        regions = merge_boxes([r['мм'] for r in field], a.merge_mm)
+        if regions:
+            row['областей'] = len(regions)
+            row['области_мм'] = regions
+        if a.diff_out and regions:
+            from PIL import Image
             os.makedirs(a.diff_out, exist_ok=True)
-            ia, ib = [Image.frombytes('L', (pm.width, pm.height), pm.samples) for pm in (pa.get_pixmap(dpi=60, colorspace=pymupdf.csGRAY), pb.get_pixmap(dpi=60, colorspace=pymupdf.csGRAY))]
-            k60 = 60 / 25.4   # рамка вокруг всех найденных областей правок (не вокруг шума)
-            box = (int(min(r['мм'][0] for r in field) * k60), int(min(r['мм'][1] for r in field) * k60),
-                   int(max(r['мм'][2] for r in field) * k60) + 1, int(max(r['мм'][3] for r in field) * k60) + 1)
-            if box:
-                pad = 40; x0, y0, x1, y1 = box
-                c = (max(0, x0 - pad), max(0, y0 - pad), min(ia.width, x1 + pad), min(ia.height, y1 + pad))
+            dpi_img = 120; kk = dpi_img / 25.4
+            ia, ib = [Image.frombytes('L', (pm.width, pm.height), pm.samples) for pm in (pa.get_pixmap(dpi=dpi_img, colorspace=pymupdf.csGRAY), pb.get_pixmap(dpi=dpi_img, colorspace=pymupdf.csGRAY))]
+            row['картинки'] = []
+            for n, (x0, y0, x1, y1) in enumerate(regions[:a.max_images], 1):   # «было | стало» на каждую область, поле 15 мм
+                pad = 15
+                c = (max(0, int((x0 - pad) * kk)), max(0, int((y0 - pad) * kk)), min(ia.width, int((x1 + pad) * kk)), min(ia.height, int((y1 + pad) * kk)))
                 w = c[2] - c[0]; out = Image.new('L', (w * 2 + 10, c[3] - c[1]), 128)
                 out.paste(ia.crop(c), (0, 0)); out.paste(ib.crop(c), (w + 10, 0))
-                fn = os.path.join(a.diff_out, f'diff_{k}.png'); out.save(fn); row['картинка'] = fn
+                fn = os.path.join(a.diff_out, f'diff_{k}_{n:02d}.png'); out.save(fn); row['картинки'].append(fn)
         res.append(row)
     for r in res:
         print(' | '.join(f'{k}: {v}' for k, v in r.items()))
