@@ -46,10 +46,10 @@ function Copy-DwgToWork([string[]]$Files, [string]$WorkDir) {
     $w = Join-Path $WorkDir ("{0}~{1}.dwg" -f $(if ($lead) { $lead } else { "f" }), $i)
     Copy-Item -LiteralPath $f $w -Force
     # xref-пути в листах обычно относительные .\Внешние_ссылки\… ; папка бывает и глубже («Новая папка\Внешние_ссылки»)
-    if (-not (Test-Path (Join-Path $WorkDir "Внешние_ссылки"))) {
-      $xr = Get-ChildItem -LiteralPath (Split-Path $f) -Directory -Recurse -Depth 2 -Filter "Внешние_ссылки" -ErrorAction SilentlyContinue | Select-Object -First 1
-      if ($xr) { Copy-Item -LiteralPath $xr.FullName $WorkDir -Recurse -Force }
-    }
+    # и называется по-разному: «Внешние_ссылки», «внешние ссылки» (ГТО) — регистр, пробел/подчёркивание не важны
+    $xr = Get-ChildItem -LiteralPath (Split-Path $f) -Directory -Recurse -Depth 2 -ErrorAction SilentlyContinue |
+          Where-Object { $_.Name -match '^(?i)внешние[ _]ссылки$' } | Select-Object -First 1
+    if ($xr -and -not (Test-Path -LiteralPath (Join-Path $WorkDir $xr.Name))) { Copy-Item -LiteralPath $xr.FullName $WorkDir -Recurse -Force }
     $res += [pscustomobject]@{ Src = $f; Work = $w; N = $i }
   }
   $res
