@@ -19,7 +19,9 @@ $lsp = $LispHead + $LispLayouts + @"
     (if (assoc ty cnt) (setq cnt (subst (cons ty (1+ (cdr (assoc ty cnt)))) (assoc ty cnt) cnt)) (setq cnt (cons (cons ty 1) cnt)))
     (cond
       ((member ty '("TEXT" "MTEXT"))
-        (setq s (cdr (assoc 1 ed)))
+        (setq s "")   ; длинный MTEXT: начало — в группах 3 (по 250 симв.), хвост — в группе 1
+        (foreach g ed (if (= 3 (car g)) (setq s (strcat s (cdr g)))))
+        (setq s (strcat s (cdr (assoc 1 ed))))
         (if (wcmatch s "*$Filter*") (write-line (strcat ty " " (cdr (assoc 5 ed)) " [" (rtos (car (cdr (assoc 10 ed))) 2 1) "," (rtos (cadr (cdr (assoc 10 ed))) 2 1) "] " s) fo)))
       ((and (= ty "INSERT") (= 1 (cdr (assoc 66 ed))))
         (setq a (entnext e))
