@@ -1,10 +1,16 @@
 # Общие функции для пакетной работы с AutoCAD 2024 (accoreconsole). Подключение:  . "$PSScriptRoot\common.ps1"
 # Запускать из PowerShell (не из Git Bash: тот портит ключи /i /s).
 
-$Global:AcadDir  = "C:\Program Files\Autodesk\AutoCAD 2024"
+# Пути можно переопределить переменными окружения: RDCI_ACAD_DIR (папка AutoCAD), RDCI_WORK (рабочая папка).
+$Global:AcadDir  = if ($env:RDCI_ACAD_DIR) { $env:RDCI_ACAD_DIR } else { "C:\Program Files\Autodesk\AutoCAD 2024" }
 $Global:AccCore  = "$AcadDir\accoreconsole.exe"
 $Global:AcadExe  = "$AcadDir\acad.exe"
-$Global:WorkRoot = "C:\Users\$env:USERNAME\AppData\Local\Temp\acc"   # короткий путь без кириллицы
+# Рабочая папка (копии DWG, журналы, резервные копии) — короткий путь БЕЗ кириллицы: accoreconsole и NETLOAD ломаются на ней.
+# Если профиль Windows назван кириллицей, %LOCALAPPDATA% тоже кириллический — тогда берётся C:\rd-ci-work.
+$Global:WorkRoot = if ($env:RDCI_WORK) { $env:RDCI_WORK }
+                   elseif ("$env:LOCALAPPDATA" -match '^[\x20-\x7E]+$') { Join-Path $env:LOCALAPPDATA "Temp\acc" }
+                   else { "C:\rd-ci-work" }
+New-Item -ItemType Directory -Force $Global:WorkRoot | Out-Null
 
 # Записать .scr в cp1251 (accoreconsole читает кириллицу в .scr только так).
 function Write-Scr([string]$Path, [string]$Text) {

@@ -2,8 +2,8 @@
 # Запускать в Windows PowerShell 5.1 (не pwsh): powershell.exe -File refl_spds.ps1 Multicad.Symbols.Tables.McTable Multicad.Symbols.McNotePosition
 # Документация (неполная) — mg142x64\mapimgd.xml; классы объектов на чертеже: mcsDbObjectTable2 → McTable,
 # mcsDbObjectNoteMultilayer → McNoteMultilayer, mcsDbObjectNotePosition → McNotePosition.
-$dir = "C:\Program Files\CSoft\СПДС GraphiCS 2023 x64\mg142x64"
-$acad = "C:\Program Files\Autodesk\AutoCAD 2024"
+$dir = if ($env:RDCI_SPDS_DIR) { $env:RDCI_SPDS_DIR } else { "C:\Program Files\CSoft\СПДС GraphiCS 2023 x64\mg142x64" }
+$acad = if ($env:RDCI_ACAD_DIR) { $env:RDCI_ACAD_DIR } else { "C:\Program Files\Autodesk\AutoCAD 2024" }
 [AppDomain]::CurrentDomain.add_ReflectionOnlyAssemblyResolve({ param($s, $e)
   $n = (New-Object Reflection.AssemblyName $e.Name).Name
   foreach ($d in $dir, $acad) { $f = Join-Path $d "$n.dll"; if (Test-Path $f) { return [Reflection.Assembly]::ReflectionOnlyLoadFrom($f) } }

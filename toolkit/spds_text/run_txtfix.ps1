@@ -12,7 +12,10 @@ param([Parameter(Mandatory)][string[]]$Files, [string]$Find = "(?!)", [string]$R
       [switch]$Dry, [switch]$Apply, [int]$TimeoutSec = 3600)
 . "$PSScriptRoot\..\common.ps1"
 $bak = Join-Path $WorkRoot ("backup\txtfix_" + (Get-Date -Format "yyyyMMdd_HHmmss"))
-$dll = "$PSScriptRoot\bin\SpdsText.dll"; if (-not (Test-Path $dll)) { & "$PSScriptRoot\build_txtfix.ps1" }
+# dll собирается в рабочую папку; пересборка, если исходник новее (после обновления плагина)
+$dll = Join-Path $WorkRoot "bin\SpdsText.dll"
+if (-not (Test-Path $dll) -or (Get-Item "$PSScriptRoot\SpdsText.cs").LastWriteTime -gt (Get-Item $dll).LastWriteTime) { & "$PSScriptRoot\build_txtfix.ps1" | Out-Host }
+if (-not (Test-Path $dll)) { "!!! нет SpdsText.dll — см. сообщение сборки"; return }
 $w = Join-Path $WorkRoot "txtfix"; Remove-Item $w -Recurse -Force -ErrorAction SilentlyContinue
 $jobs = Copy-DwgToWork $Files $w
 $jobs | ForEach-Object { "$($_.N)`t$($_.Src)" } | Set-Content (Join-Path $w "map.txt") -Encoding utf8   # копия <начало имени>~N.dwg -> исходник (для find_codes.py)

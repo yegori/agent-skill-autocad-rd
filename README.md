@@ -7,8 +7,10 @@
 **Статус:** проектирование (спецификация v0.2, октябрь 2026). Кода сервиса ещё нет; есть проверенные на проекте
 «Архыз ВО, РД 1 этап» инструменты-исполнители в `toolkit\`.
 
-Расположение: `D:\yad\YandexDisk\dev\rd-ci\` (латинский путь — кириллица в путях ломает скрипты AutoCAD; см. `docs\11_pitfalls.md`).
-Репозиторий git (локальный).
+**Плагин Claude Code.** Репозиторий одновременно marketplace `rd-ci-arkhyz` и плагин `rd-ci` (навыки `autocad-rd`, `check-set`).
+Установка для коллег — `docs/INSTALL.md`. Обновления получают все, у кого включено автообновление, сразу после push (версия не задаётся — отслеживаются коммиты).
+
+Рабочая копия автора: `D:\yad\YandexDisk\dev\rd-ci\` (латинский путь — кириллица в путях ломает скрипты AutoCAD; см. `docs\11_pitfalls.md`).
 
 ## Карта
 
@@ -24,7 +26,10 @@
 | `docs/10_playbook.md` | Плейбук ручной работы: разведка → тест на одном файле → пакет → проверка → выдача; чек-лист сверки листов. |
 | `docs/11_pitfalls.md` | Грабли AutoCAD / accoreconsole / СПДС / печати / PDF / PowerShell. **Читать перед любой работой с DWG.** |
 | `docs/12_arkhyz_test_cases.md` | Эталонные ошибки Архыза (где, что, чем найти, где состояние «до») — приёмочный тест проверок. |
-| `examples/` | Примеры паспортов (Архыз: проект и раздел «Водопропуски»). |
+| `.claude-plugin/` | `plugin.json` (плагин rd-ci), `marketplace.json` (каталог rd-ci-arkhyz). |
+| `skills/` | Навыки плагина: `autocad-rd` (работа с РД, рецепты), `check-set` (полная проверка комплекта). |
+| `docs/INSTALL.md` | Установка и работа — для коллег. |
+| `examples/` | Примеры паспортов (Архыз: проект и раздел «Водопропуски»); `examples/reports/` — образец сборки таблицы замечаний. |
 | `examples/arkhyz/` | Снимок проектных скриптов и записок Архыза на 17.10.2026 (только чтение). |
 | `toolkit/` | Исполнители: PowerShell + Python + плагин СПДС (см. `toolkit/README.md`). |
 
@@ -33,4 +38,4 @@
 Windows 10 Pro x64, AutoCAD 2024 (+ Civil 3D Object Enabler), СПДС GraphiCS 2023 x64, PowerShell 7 (`pwsh`), Python 3
 (pymupdf, ezdxf, numpy, scipy, shapely, Pillow, openpyxl, PyYAML), клиент Яндекс.Диска, доступ в интернет (Telegram). Выделенный ПК с удалённым доступом.
 
-Навык Claude Code `autocad-rd` (`~/.claude/skills/autocad-rd/SKILL.md`) ссылается на этот проект.
+Навыки Claude Code — в `skills/` этого репозитория (личный `~/.claude/skills/autocad-rd` больше не используется).

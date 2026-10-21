@@ -10,7 +10,15 @@ r"""Проверка C1: коды «чужих» сооружений на ли�
 import sys; sys.stdout.reconfigure(encoding='utf-8', errors='replace')  # python -I игнорирует PYTHONIOENCODING; в pwsh: [Console]::OutputEncoding = [Text.Encoding]::UTF8
 import argparse, collections, os, re
 
-W = os.path.join(os.environ.get('LOCALAPPDATA', ''), 'Temp', 'acc', 'txtfix')
+def work_root():
+    """Та же рабочая папка, что в common.ps1: RDCI_WORK, иначе %LOCALAPPDATA%\\Temp\\acc (если путь латинский), иначе C:\\rd-ci-work."""
+    if os.environ.get('RDCI_WORK'):
+        return os.environ['RDCI_WORK']
+    la = os.environ.get('LOCALAPPDATA', '')
+    return os.path.join(la, 'Temp', 'acc') if la and la.isascii() else r'C:\rd-ci-work'
+
+
+W = os.path.join(work_root(), 'txtfix')
 
 
 def norm(s):
