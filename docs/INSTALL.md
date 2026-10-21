@@ -23,10 +23,10 @@ rd-ci — плагин Claude Code с инструментами проверк�
    Если на ПК нет SSH-ключа для GitHub, задайте переменную окружения `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` (Параметры Windows → «Переменные среды»).
 2. Подключить каталог и установить плагин — в терминале:
    ```
-   claude plugin marketplace add <владелец>/<репозиторий>
+   claude plugin marketplace add yegori/rd-ci
    claude plugin install rd-ci@rd-ci-arkhyz
    ```
-   или в VS Code: окно Claude → **Manage plugins** → добавить marketplace `<владелец>/<репозиторий>` → установить **rd-ci**.
+   или в VS Code: окно Claude → **Manage plugins** → добавить marketplace `yegori/rd-ci` → установить **rd-ci**.
 3. Включить автообновление: `/plugin` → Marketplaces → `rd-ci-arkhyz` → **Enable auto-update**
    (или вручную время от времени: `claude plugin marketplace update rd-ci-arkhyz`).
 4. Проверить рабочее место — попросите Claude: «проверь окружение rd-ci», или сами:
