@@ -29,6 +29,7 @@
 | `.claude-plugin/` | `plugin.json` (плагин rd-ci), `marketplace.json` (каталог rd-ci-arkhyz). |
 | `skills/` | Навыки плагина: `autocad-rd` (работа с РД, рецепты), `check-set` (полная проверка комплекта). |
 | `docs/INSTALL.md` | Установка и работа — для коллег. |
+| `docs/PROJECT_CLAUDE_TEMPLATE.md` | Шаблон `CLAUDE.md` для корня папки объекта (знания по объекту живут там, не в плагине). |
 | `examples/` | Примеры паспортов (Архыз: проект и раздел «Водопропуски»); `examples/reports/` — образец сборки таблицы замечаний. |
 | `examples/arkhyz/` | Снимок проектных скриптов и записок Архыза на 17.10.2026 (только чтение). |
 | `toolkit/` | Исполнители: PowerShell + Python + плагин СПДС (см. `toolkit/README.md`). |
