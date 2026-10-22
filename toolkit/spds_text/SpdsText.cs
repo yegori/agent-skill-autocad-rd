@@ -60,23 +60,31 @@ namespace SpdsText
             string[] ins = (Environment.GetEnvironmentVariable("TXT_IN") ?? "").Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries);
             string[] outs = (Environment.GetEnvironmentVariable("TXT_OUT") ?? "").Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries);
             dry = Environment.GetEnvironmentVariable("TXT_DRY") == "1";
-            Pairs = new List<KeyValuePair<Regex, string>>();
-            string pairsPath = Environment.GetEnvironmentVariable("TXT_PAIRS");
-            if (!string.IsNullOrEmpty(pairsPath))
-            {
-                foreach (string line in File.ReadAllLines(pairsPath, Encoding.UTF8))
-                {
-                    if (line.Trim().Length == 0 || line.StartsWith("#")) continue;
-                    int tab = line.IndexOf('\t');
-                    if (tab < 0) continue;
-                    Pairs.Add(new KeyValuePair<Regex, string>(new Regex(line.Substring(0, tab), RegexOptions.IgnoreCase), line.Substring(tab + 1)));
-                }
-            }
-            else
-                Pairs.Add(new KeyValuePair<Regex, string>(new Regex(Environment.GetEnvironmentVariable("TXT_FIND") ?? "(?!)", RegexOptions.IgnoreCase),
-                                                          Environment.GetEnvironmentVariable("TXT_REPL") ?? ""));
             Seen = Environment.GetEnvironmentVariable("TXT_SEEN");
             log = new StreamWriter(logPath ?? Path.Combine(Path.GetTempPath(), "txtfix.log"), false, new UTF8Encoding(false));
+            // 22.10: неверный regex (напр. «\P» вместо «\\P») бросал исключение вне try → модальное окно AutoCAD, пакет вставал. Теперь — ERROR в журнал и выход.
+            Pairs = new List<KeyValuePair<Regex, string>>();
+            try
+            {
+                string pairsPath = Environment.GetEnvironmentVariable("TXT_PAIRS");
+                if (!string.IsNullOrEmpty(pairsPath))
+                {
+                    foreach (string line in File.ReadAllLines(pairsPath, Encoding.UTF8))
+                    {
+                        if (line.Trim().Length == 0 || line.StartsWith("#")) continue;
+                        int tab = line.IndexOf('\t');
+                        if (tab < 0) continue;
+                        Pairs.Add(new KeyValuePair<Regex, string>(new Regex(line.Substring(0, tab), RegexOptions.IgnoreCase), line.Substring(tab + 1)));
+                    }
+                }
+                else
+                    Pairs.Add(new KeyValuePair<Regex, string>(new Regex(Environment.GetEnvironmentVariable("TXT_FIND") ?? "(?!)", RegexOptions.IgnoreCase),
+                                                              Environment.GetEnvironmentVariable("TXT_REPL") ?? ""));
+            }
+            catch (System.Exception ex)
+            {
+                L("ERROR|regex|" + ex.Message); L("ALLDONE"); log.Close(); log = null; return;
+            }
             object pn = AcApp.GetSystemVariable("PROXYNOTICE");
             try
             {
