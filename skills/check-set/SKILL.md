@@ -5,6 +5,10 @@ description: Full check of an issued set of working documentation (РД) in Auto
 
 # Проверка комплекта РД
 
+Сначала прочитай соседний навык `../autocad-rd/SKILL.md` целиком и следуй его правилам.
+В Pi корень инструментов — на два уровня выше каталога этого `SKILL.md`; в Claude Code — `${CLAUDE_PLUGIN_ROOT}`.
+Далее `${CLAUDE_PLUGIN_ROOT}` обозначает этот корень: в Pi подставляй абсолютный путь, не полагайся на переменную окружения или текущую папку.
+
 Инструменты — `${CLAUDE_PLUGIN_ROOT}/toolkit/` (см. навык `autocad-rd` и `${CLAUDE_PLUGIN_ROOT}/docs/11_pitfalls.md`).
 Ниже `T` = `${CLAUDE_PLUGIN_ROOT}/toolkit`, `W` = рабочая папка (`%LOCALAPPDATA%\Temp\acc` или `RDCI_WORK`).
 

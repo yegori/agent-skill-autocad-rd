@@ -12,6 +12,11 @@
 
 Рабочая копия автора: `D:\yad\YandexDisk\dev\rd-ci\` (латинский путь — кириллица в путях ломает скрипты AutoCAD; см. `docs\11_pitfalls.md`).
 
+**Pi.** Этот же репозиторий устанавливается командой `pi install git:github.com/yegori/rd-ci`
+(после публикации изменений) или `pi install D:/yad/YandexDisk/dev/rd-ci` для локальной разработки.
+После `/reload` доступны `/skill:autocad-rd` и `/skill:check-set`. Навыки и инструменты общие с Claude Code;
+подробности — `docs/INSTALL.md`.
+
 ## Карта
 
 | Путь | Что |
@@ -27,7 +32,8 @@
 | `docs/11_pitfalls.md` | Грабли AutoCAD / accoreconsole / СПДС / печати / PDF / PowerShell. **Читать перед любой работой с DWG.** |
 | `docs/12_arkhyz_test_cases.md` | Эталонные ошибки Архыза (где, что, чем найти, где состояние «до») — приёмочный тест проверок. |
 | `.claude-plugin/` | `plugin.json` (плагин rd-ci), `marketplace.json` (каталог rd-ci-arkhyz). |
-| `skills/` | Навыки плагина: `autocad-rd` (работа с РД, рецепты), `check-set` (полная проверка комплекта). |
+| `package.json` | Манифест пакета Pi, подключающий общие навыки из `skills/`. |
+| `skills/` | Общие навыки Claude Code и Pi: `autocad-rd` (работа с РД, рецепты), `check-set` (полная проверка комплекта). |
 | `docs/INSTALL.md` | Установка и работа — для коллег. |
 | `docs/PROJECT_CLAUDE_TEMPLATE.md` | Шаблон `CLAUDE.md` для корня папки объекта (знания по объекту живут там, не в плагине). |
 | `examples/` | Примеры паспортов (Архыз: проект и раздел «Водопропуски»); `examples/reports/` — образец сборки таблицы замечаний. |

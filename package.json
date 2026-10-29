@@ -1,0 +1,13 @@
+{
+  "name": "rd-ci",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Проверка и сборка комплектов РД AutoCAD — навыки для Pi и Claude Code",
+  "keywords": ["pi-package"],
+  "pi": {
+    "skills": ["./skills"],
+    "extensions": [],
+    "prompts": [],
+    "themes": []
+  }
+}
