@@ -4,6 +4,7 @@
 [CmdletBinding()]
 param()
 $ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [Text.Encoding]::UTF8
 $PackageRoot = Split-Path -Parent $PSScriptRoot
 if (-not (Get-Command pi -ErrorAction SilentlyContinue)) {
     throw 'Pi не найден в PATH. Сначала установите Pi.'
