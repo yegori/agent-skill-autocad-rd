@@ -28,7 +28,16 @@ def check():
         frontmatter = text.split('---', 2)[1]
         assert re.search(rf'^name: {re.escape(name)}$', frontmatter, re.M)
         description = re.search(r'^description: (.+)$', frontmatter, re.M)
-        assert description and 0 < len(description[1]) <= 1024, f'{name}: invalid description'
+        assert description, f'{name}: missing description'
+        value = description[1]
+        # Maintained descriptions use plain scalars or JSON-compatible quoted strings.
+        # A plain ': ' makes YAML parsing fail; Pi warns and omits the skill.
+        if value.startswith('"'):
+            value = json.loads(value)
+        else:
+            assert ': ' not in value, f'{name}: quote description containing colon-space'
+            assert ' #' not in value, f'{name}: quote description containing a YAML comment'
+        assert isinstance(value, str) and 0 < len(value) <= 1024, f'{name}: invalid description'
         assert skill.parent.parent.parent == ROOT
     for name in ('README.md', 'CLAUDE.md', 'docs/INSTALL.md', 'docs/03_checks.md',
                  'docs/10_playbook.md', 'docs/11_pitfalls.md', 'docs/12_arkhyz_test_cases.md',

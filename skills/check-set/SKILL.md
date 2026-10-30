@@ -1,6 +1,6 @@
 ---
 name: check-set
-description: Full check of an issued set of working documentation (РД) in AutoCAD — before sending it to the customer or expert. Use when the user asks to «проверь комплект / выдачу / папку», check a set after reassembly, verify answers to expert comments, or prepare a list of remarks (таблица замечаний) and «было → стало» corrections. Read-only: never changes the issue folder.
+description: "Full check of an issued set of working documentation (РД) in AutoCAD — before sending it to the customer or expert. Use when the user asks to «проверь комплект / выдачу / папку», check a set after reassembly, verify answers to expert comments, or prepare a list of remarks (таблица замечаний) and «было → стало» corrections. Read-only: never changes the issue folder."
 ---
 
 # Проверка комплекта РД
