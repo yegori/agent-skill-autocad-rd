@@ -4,7 +4,7 @@
 пишет по-русски; отвечать по-русски.
 
 ## Плагин
-Репозиторий — плагин Claude Code `rd-ci` и marketplace `rd-ci-arkhyz` (`.claude-plugin/`), навыки в `skills/`. Коллеги ставят его по `docs/INSTALL.md`;
+Приватный GitHub-репозиторий — `yegori/agent-skill-rd-ci`, рабочая копия — `D:/yad/YandexDisk/dev/agent-skills/rd-ci`. Плагин Claude Code `rd-ci` и marketplace `rd-ci-arkhyz` (`.claude-plugin/`), навыки в `skills/` сохраняют прежние имена. Коллеги ставят его по `docs/INSTALL.md`;
 после push изменения доходят до них автоматически. Перед коммитом — `claude plugin validate .`; пути не ломать: в навыках `${CLAUDE_PLUGIN_ROOT}`,
 в скриптах `$PSScriptRoot` / `$WorkRoot`; в папку плагина ничего не писать — у коллег это кэш.
 

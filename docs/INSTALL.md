@@ -19,16 +19,26 @@ rd-ci — плагин Claude Code и пакет Pi с общими навыка
 Доступ к GitHub настройте через `gh auth login` и `gh auth setup-git`, как для Claude Code.
 
 ```text
-pi install git:github.com/yegori/rd-ci
+pi install git:github.com/yegori/agent-skill-rd-ci
 ```
 
 Для разработки можно вместо GitHub подключить локальную рабочую копию (без копирования):
 
 ```text
-pi install D:/yad/YandexDisk/dev/rd-ci
+pi install D:/yad/YandexDisk/dev/agent-skills/rd-ci
 ```
 
 Выберите один источник. После установки в активной сессии выполните `/reload`.
+
+Репозиторий приватный; коллеге нужен доступ через GitHub collaborator invitation. На новом ПК для рабочей копии:
+```text
+gh auth login
+gh auth setup-git
+gh repo clone yegori/agent-skill-rd-ci D:/dev/agent-skills/rd-ci
+pi install D:/dev/agent-skills/rd-ci
+```
+
+При переходе со старого имени удалите старую декларацию `pi remove git:github.com/yegori/rd-ci`, затем установите один из новых источников выше. На компьютере автора используется локальное подключение; не держите одновременно его и Git-пакет с теми же навыками. Старый URL GitHub может перенаправляться, но новые установки должны использовать `agent-skill-rd-ci`. Названия `/skill:autocad-rd` и `/skill:check-set` не менялись.
 Навыки выбираются по задаче или вызываются явно:
 
 ```text
@@ -51,10 +61,10 @@ pi install D:/yad/YandexDisk/dev/rd-ci
    Если на ПК нет SSH-ключа для GitHub, задайте переменную окружения `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` (Параметры Windows → «Переменные среды»).
 2. Подключить каталог и установить плагин — в терминале:
    ```
-   claude plugin marketplace add yegori/rd-ci
+   claude plugin marketplace add yegori/agent-skill-rd-ci
    claude plugin install rd-ci@rd-ci-arkhyz
    ```
-   или в VS Code: окно Claude → **Manage plugins** → добавить marketplace `yegori/rd-ci` → установить **rd-ci**.
+   или в VS Code: окно Claude → **Manage plugins** → добавить marketplace `yegori/agent-skill-rd-ci` → установить **rd-ci**.
 3. Включить автообновление: `/plugin` → Marketplaces → `rd-ci-arkhyz` → **Enable auto-update**
    (или вручную время от времени: `claude plugin marketplace update rd-ci-arkhyz`).
 4. Проверить рабочее место — попросите Claude: «проверь окружение rd-ci», или сами:

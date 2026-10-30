@@ -1,4 +1,4 @@
-# rd-ci — автоматическая проверка и сборка комплектов рабочей документации
+# agent-skill-rd-ci — проверка и сборка комплектов рабочей документации
 
 Аналог «автотестов перед деплоем» для разделов РД в AutoCAD: появилась новая версия раздела (папка с датой) и метка
 `ПРОВЕРИТЬ.txt` → сервис на выделенном ПК проверяет листы на несоответствия, собирает ОД (с согласованием в Telegram),
@@ -10,10 +10,12 @@
 **Плагин Claude Code.** Репозиторий одновременно marketplace `rd-ci-arkhyz` и плагин `rd-ci` (навыки `autocad-rd`, `check-set`).
 Установка для коллег — `docs/INSTALL.md`. Обновления получают все, у кого включено автообновление, сразу после push (версия не задаётся — отслеживаются коммиты).
 
-Рабочая копия автора: `D:\yad\YandexDisk\dev\rd-ci\` (латинский путь — кириллица в путях ломает скрипты AutoCAD; см. `docs\11_pitfalls.md`).
+Приватный репозиторий: https://github.com/yegori/agent-skill-rd-ci . Названия навыков и плагина `rd-ci`, `autocad-rd`, `check-set`, marketplace `rd-ci-arkhyz` сохранены для совместимости.
 
-**Pi.** Этот же репозиторий устанавливается командой `pi install git:github.com/yegori/rd-ci`
-(после публикации изменений) или `pi install D:/yad/YandexDisk/dev/rd-ci` для локальной разработки.
+Рабочая копия автора: `D:\yad\YandexDisk\dev\agent-skills\rd-ci\` (латинский путь — кириллица в путях ломает скрипты AutoCAD; см. `docs\11_pitfalls.md`).
+
+**Pi.** Этот же репозиторий устанавливается командой `pi install git:github.com/yegori/agent-skill-rd-ci`
+(после публикации изменений) или `pi install D:/yad/YandexDisk/dev/agent-skills/rd-ci` для локальной разработки.
 После `/reload` доступны `/skill:autocad-rd` и `/skill:check-set`. Навыки и инструменты общие с Claude Code;
 подробности — `docs/INSTALL.md`.
 
