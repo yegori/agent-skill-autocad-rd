@@ -1,99 +1,140 @@
-# rd-ci: установка и работа (для коллег)
+# autocad-rd: установка и работа
 
-rd-ci — плагин Claude Code и пакет Pi с общими навыками и инструментами проверки и правки комплектов РД в AutoCAD.
-После установки Claude сам подхватывает навыки, когда вы просите, например, «проверь комплект в папке …», «замени текст во всех листах»,
-«перенумеруй листы», «собери PDF комплекта».
+Самостоятельный пакет Pi и плагин Claude Code с навыками `autocad-rd` и `check-set`, инструментами проверки,
+правки и сборки комплектов AutoCAD РД. Сервис [rd-ci](https://github.com/yegori/rd-ci) устанавливать не нужно.
+Внутренние имена Claude-плагина `rd-ci` и marketplace `rd-ci-arkhyz` сохранены для совместимости.
 
 ## Что нужно на компьютере
 
-- Windows 10/11, **AutoCAD 2024** (с Civil 3D Object Enabler), **СПДС GraphiCS 2023 x64**, Microsoft Excel и Word.
+- Windows 10/11, **AutoCAD 2024** с Civil 3D Object Enabler, **СПДС GraphiCS 2023 x64**, Excel и Word.
 - **PowerShell 7**: `winget install Microsoft.PowerShell`.
-- **Python 3.11+** (python.org, при установке отметить «Add python.exe to PATH»), затем:
-  `python -m pip install pymupdf ezdxf numpy scipy shapely pillow openpyxl`
-- **Git** и **GitHub CLI**: `winget install Git.Git GitHub.cli`.
-- Claude Code (терминал или расширение VS Code) и учётная запись GitHub с доступом к репозиторию плагина (приглашение даёт Егор Иванов).
+- **Python 3.11+**, затем `python -m pip install pymupdf ezdxf numpy scipy shapely pillow openpyxl`.
+- Git и GitHub CLI: `winget install Git.Git GitHub.cli`.
+- Pi и/или Claude Code, учётная запись GitHub с доступом к приватному `yegori/agent-skill-autocad-rd`
+  (приглашение даёт Егор Иванов). Наличие доступа к сервису rd-ci не заменяет доступ к пакету.
 
-## Установка в Pi
+Вход: `gh auth login`, затем `gh auth setup-git`. Лицензии AutoCAD/СПДС и авторизация внешних сервисов
+настраиваются отдельно на каждом ПК; GitHub-вход их не переносит.
 
-Те же навыки и скрипты доступны как пакет Pi; отдельная копия навыков не нужна.
-Доступ к GitHub настройте через `gh auth login` и `gh auth setup-git`, как для Claude Code.
+## Pi
+
+Для установки из GitHub:
 
 ```text
-pi install git:github.com/yegori/agent-skill-rd-ci
+pi install git:github.com/yegori/agent-skill-autocad-rd
 ```
 
-Для разработки можно вместо GitHub подключить локальную рабочую копию (без копирования):
+Для разработки и установки из рабочей копии:
 
 ```text
-pi install D:/yad/YandexDisk/dev/agent-skills/rd-ci
+gh repo clone yegori/agent-skill-autocad-rd D:/dev/agent-skills/autocad-rd
+pi install D:/dev/agent-skills/autocad-rd
 ```
 
-Выберите один источник. После установки в активной сессии выполните `/reload`.
-
-Репозиторий приватный; коллеге нужен доступ через GitHub collaborator invitation. На новом ПК для рабочей копии:
-```text
-gh auth login
-gh auth setup-git
-gh repo clone yegori/agent-skill-rd-ci D:/dev/agent-skills/rd-ci
-pi install D:/dev/agent-skills/rd-ci
-```
-
-При переходе со старого имени удалите старую декларацию `pi remove git:github.com/yegori/rd-ci`, затем установите один из новых источников выше. На компьютере автора используется локальное подключение; не держите одновременно его и Git-пакет с теми же навыками. Старый URL GitHub может перенаправляться, но новые установки должны использовать `agent-skill-rd-ci`. Названия `/skill:autocad-rd` и `/skill:check-set` не менялись.
-Навыки выбираются по задаче или вызываются явно:
+На ПК автора: `pi install D:/yad/YandexDisk/dev/agent-skills/autocad-rd`.
+Вместо последней команды можно из клона выполнить `pwsh -File scripts/install.ps1`.
+Выбрать **один** источник: локальный пакет читается без копирования, Git-пакет загружается отдельно.
+После установки в активной сессии — `/reload`.
 
 ```text
-/skill:autocad-rd проверь окружение rd-ci
+/skill:autocad-rd проверь окружение
 /skill:check-set проверь комплект в папке …
 ```
 
-Обновление Git-пакета: `pi update --extensions`, затем `/reload`. Локальное подключение читает файлы прямо из рабочей копии.
-Если раньше был создан пользовательский навык-обёртка `~/.pi/agent/skills/rd-ci/`, после подключения пакета перенесите его за пределы каталога skills: он больше не нужен.
-В Pi попросите прочитать `CLAUDE.md` объекта и `_claude` раздела явно — автоматическая загрузка файлов Claude Code не гарантируется.
-Пакет не устанавливает AutoCAD, СПДС и Python: проверка окружения и правила безопасности те же.
+Обновление Git-пакета: `pi update --extensions`, затем `/reload`.
+Локальный пакет обновлять через `git pull --ff-only` в его рабочей копии, затем `/reload`.
+В Pi явно просить прочитать `CLAUDE.md` объекта и `_claude` раздела.
 
-## Установка в Claude Code (один раз)
+### Переход со старой установки Pi
 
-1. Вход в GitHub, чтобы Claude Code мог скачать закрытый репозиторий:
-   ```
-   gh auth login
-   gh auth setup-git
-   ```
-   Если на ПК нет SSH-ключа для GitHub, задайте переменную окружения `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1` (Параметры Windows → «Переменные среды»).
-2. Подключить каталог и установить плагин — в терминале:
-   ```
-   claude plugin marketplace add yegori/agent-skill-rd-ci
-   claude plugin install rd-ci@rd-ci-arkhyz
-   ```
-   или в VS Code: окно Claude → **Manage plugins** → добавить marketplace `yegori/agent-skill-rd-ci` → установить **rd-ci**.
-3. Включить автообновление: `/plugin` → Marketplaces → `rd-ci-arkhyz` → **Enable auto-update**
-   (или вручную время от времени: `claude plugin marketplace update rd-ci-arkhyz`).
-4. Проверить рабочее место — попросите Claude: «проверь окружение rd-ci», или сами:
-   ```
-   pwsh -File "<папка плагина>\toolkit\check_env.ps1" -Build
-   ```
-   Должно быть «Всё готово.». Скрипт подскажет, чего не хватает, и соберёт плагин СПДС.
+Посмотреть `pi list` и удалить **только реально подключённый старый источник**, например:
 
-## Как работать
+```text
+pi remove D:/yad/YandexDisk/dev/agent-skills/rd-ci
+pi remove git:github.com/yegori/agent-skill-rd-ci
+```
 
-- Открывайте сессию Claude Code **в папке проекта** (например, папке раздела на Яндекс.Диске): Claude прочитает `CLAUDE.md` объекта
-  (в корне папки объекта — шифры, структура выдач, общие решения) и записки `_claude` раздела. Для нового объекта — шаблон `docs/PROJECT_CLAUDE_TEMPLATE.md`.
-- Примеры запросов: «проверь комплект в папке …», «что изменилось против прошлой выдачи», «составь таблицу замечаний»,
-  «замени „…“ на „…“ во всех листах, включая таблицы СПДС», «перепечатай листы 1 и 5 и пересобери общий PDF».
-- Правила, которые Claude соблюдает (и вам стоит помнить):
-  - массовые правки — сначала на одном файле, с показом результата в PDF, потом на всех;
-  - перед заменой файла — резервная копия; файлы, открытые у вас в AutoCAD/Excel/Acrobat, не перезаписываются (Claude подождёт, пока вы закроете);
-  - объекты СПДС не взрываются, правятся через API;
-  - инженерные значения не меняются без вашего решения — Claude предлагает «было → стало»;
-  - ваш AutoCAD не трогается: Claude запускает свой отдельный экземпляр — **не закрывайте чужие окна acad.exe**, это может быть его работа.
-- Решения и найденные ошибки Claude пишет в `_claude` папки раздела — их видят все. Не храните там ничего личного.
+Если подключён ещё более старый `git:github.com/yegori/rd-ci`, удалить и его: теперь этот URL ведёт
+на **сервис, не пакет навыков**. Затем установить один новый источник выше и выполнить `/reload`.
+Команды навыков не менялись. Старые пользовательские копии/обёртки навыков сохранять вне каталогов
+обнаружения (`~/.pi/agent/skill-backups/`), не держать вторую редактируемую копию в `~/.pi/agent/skills/`.
+
+## Claude Code
+
+```text
+claude plugin marketplace add yegori/agent-skill-autocad-rd
+claude plugin install rd-ci@rd-ci-arkhyz
+```
+
+Если без SSH-ключа скачивание не работает, задать `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1`.
+В VS Code: Manage plugins → добавить marketplace `yegori/agent-skill-autocad-rd` → установить `rd-ci`.
+В `/plugin` → Marketplaces → `rd-ci-arkhyz` включить auto-update, либо обновлять вручную:
+
+```text
+claude plugin marketplace update rd-ci-arkhyz
+claude plugin update rd-ci@rd-ci-arkhyz
+```
+
+При локальной разработке вместо GitHub-источника:
+`claude plugin marketplace add D:/yad/YandexDisk/dev/agent-skills/autocad-rd`.
+Не менять имена плагина и marketplace: существующие установки используют их как идентификаторы.
+
+### Переход со старого marketplace
+
+Если marketplace указывает на прежнюю локальную папку или `yegori/rd-ci`, источник нужно заменить.
+Для старого `agent-skill-rd-ci` GitHub может сохранить redirect, но рекомендуется явно указать новое имя:
+
+```text
+claude plugin uninstall rd-ci@rd-ci-arkhyz
+claude plugin marketplace remove rd-ci-arkhyz
+claude plugin marketplace add yegori/agent-skill-autocad-rd
+claude plugin install rd-ci@rd-ci-arkhyz
+```
+
+Для локальной разработки в команде `marketplace add` подставить новую локальную папку.
+Проверить `claude plugin list`, `claude plugin marketplace list`, при необходимости снова включить auto-update.
+Перезапустить активную сессию Claude Code после изменения установки.
+
+## Проверки
+
+Статически, без AutoCAD:
+
+```text
+python -I scripts/check_package.py
+claude plugin validate .
+```
+
+Перед работой с DWG попросить агента проверить окружение или выполнить:
+
+```text
+pwsh -File "<корень пакета>/toolkit/check_env.ps1" -Build
+```
+
+Скрипт проверит AutoCAD, СПДС, Python, Excel/Word и соберёт SpdsText в рабочую папку.
+Он не устанавливает AutoCAD/СПДС. При ошибках сначала устранить причины, не переходить к DWG.
+
+## Работа и безопасность
+
+Открывать агента в папке объекта. Прочитать `CLAUDE.md` объекта и записки `_claude` раздела;
+для нового объекта есть `docs/PROJECT_CLAUDE_TEMPLATE.md`.
+
+- Массовые правки: один файл → показать PDF → получить «ок» → пакет.
+- Работать на копиях; перед заменой исходника — проверенная резервная копия, открытые файлы не перезаписывать.
+- AutoCAD пользователя не автоматизировать, чужие процессы не завершать.
+- Свои acad.exe/accoreconsole запускать по одному, не одновременно. СПДС не взрывать, использовать API.
+- Инженерные значения менять только по решению пользователя.
+- Решения и ошибки объекта — в `_claude` рядом с чертежами, не в репозитории пакета.
+- Общие находки инструментов — в `docs/11_pitfalls.md` пакета через Git; секреты и пользовательские документы в Git не добавлять.
 
 ## Рабочая папка
 
-Копии чертежей, журналы и резервные копии лежат в `%LOCALAPPDATA%\Temp\acc` (если имя профиля Windows кириллическое — в `C:\rd-ci-work`).
-Переопределяется переменной `RDCI_WORK`. Другие версии AutoCAD/СПДС — переменные `RDCI_ACAD_DIR`, `RDCI_SPDS_DIR`.
+Копии, журналы, резервные копии и сборки: `%LOCALAPPDATA%/Temp/acc`, при кириллическом профиле — `C:/rd-ci-work`.
+Переопределяется `RDCI_WORK`; AutoCAD/СПДС — `RDCI_ACAD_DIR`, `RDCI_SPDS_DIR`.
+Имена переменных сохранены, несмотря на переименование пакета. В установленный пакет ничего не писать.
 
-## Если что-то не работает
+## Диагностика
 
-- «Плагин не найден / не скачивается» — проверьте `gh auth status` и доступ к репозиторию; `CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1`.
-- «Нет подходящего носителя» при печати — нестандартный формат; скрипты печати добавляют его в «DWG To PDF» сами (с резервной копией PMP).
-- Замечания по инструментам и новые «грабли» — Егору Иванову (их вносят в `docs/11_pitfalls.md` плагина, и после обновления они есть у всех).
+- Не скачивается — `gh auth status`, доступ collaborator к **пакету**, настройка HTTPS.
+- Нет навыков — `pi list`, `/reload`, отсутствие старых копий; в Claude — `claude plugin list`.
+- Нет подходящего носителя — нестандартный формат: скрипты печати добавляют его в DWG To PDF с резервной копией PMP.
+- Ошибки сервиса/бота — проект rd-ci; ошибки исполнителей и ручных навыков — autocad-rd.

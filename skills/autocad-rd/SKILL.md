@@ -1,13 +1,15 @@
 ---
 name: autocad-rd
-description: Use when the user works with AutoCAD/Civil 3D drawing sets of working documentation (РД) — checking or correcting sheets, building a «Общие данные» (ОД) sheet from a sample, renumbering sheets in title blocks, mass find-and-replace of text (including СПДС GraphiCS tables, leaders and level marks), plotting DWG to PDF, assembling a set PDF with cover, preparing an issue folder (выдача), reading SHX-text PDFs of drawings, quantities checks, or developing the rd-ci checking service. Triggers on DWG, DXF, accoreconsole, штамп, шифр, ИЗ, выдача, комплект, СПДС, спецификация, ведомость, ОД, rd-ci.
+description: Use when the user works with AutoCAD/Civil 3D drawing sets of working documentation (РД) — checking or correcting sheets, building a «Общие данные» (ОД) sheet from a sample, renumbering sheets in title blocks, mass find-and-replace of text (including СПДС GraphiCS tables, leaders and level marks), plotting DWG to PDF, assembling a set PDF with cover, preparing an issue folder (выдача), reading SHX-text PDFs of drawings, quantities checks, or integrating AutoCAD checking executors into the rd-ci service. Triggers on DWG, DXF, accoreconsole, штамп, шифр, ИЗ, выдача, комплект, СПДС, спецификация, ведомость, ОД.
 ---
 
 # AutoCAD РД: проверка и корректировка комплектов
 
 ## Корень инструментов (Claude Code и Pi)
 
-Один набор навыков используется в обоих агентах.
+Пакет `autocad-rd` самостоятельный; один набор навыков используется в обоих агентах.
+Сервис автоматизации rd-ci — отдельный репозиторий `yegori/rd-ci`: его спецификацию и код искать там,
+а инструменты и правила работы с чертежами — в этом пакете. Для ручной работы исходники сервиса не нужны.
 - В Claude Code корень репозитория/плагина задаётся `${CLAUDE_PLUGIN_ROOT}`.
 - В Pi вычисли корень по пути загруженного `SKILL.md`: от `skills/autocad-rd/` на два уровня вверх. Не используй текущую рабочую папку и не зашивай путь конкретного ПК.
 - Далее `${CLAUDE_PLUGIN_ROOT}` в инструкциях — обозначение этого корня. В Pi перед запуском команд подставляй фактический абсолютный путь: такая переменная окружения там не гарантируется.

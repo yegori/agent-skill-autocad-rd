@@ -1,9 +1,16 @@
 {
-  "name": "rd-ci",
+  "name": "autocad-rd",
   "version": "0.1.0",
   "private": true,
   "description": "Проверка и сборка комплектов РД AutoCAD — навыки для Pi и Claude Code",
   "keywords": ["pi-package"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yegori/agent-skill-autocad-rd.git"
+  },
+  "scripts": {
+    "check": "python -I scripts/check_package.py"
+  },
   "pi": {
     "skills": ["./skills"],
     "extensions": [],

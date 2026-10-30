@@ -8,7 +8,8 @@
 
 ## Инструменты
 Работа с DWG/PDF комплектов — через плагин Claude Code **rd-ci** (навыки `autocad-rd`, `check-set`).
-Если навыков rd-ci нет в сессии — сказать пользователю, что плагин не установлен: https://github.com/yegori/agent-skill-rd-ci/blob/master/docs/INSTALL.md.
+Пакет называется **autocad-rd**, внутреннее имя Claude-плагина **rd-ci** сохранено для совместимости.
+Если навыков нет в сессии — сказать пользователю, что пакет не установлен: https://github.com/yegori/agent-skill-autocad-rd/blob/master/docs/INSTALL.md.
 Без плагина DWG не трогать.
 
 ## Объект

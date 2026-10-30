@@ -1,50 +1,76 @@
-# agent-skill-rd-ci — проверка и сборка комплектов рабочей документации
+# autocad-rd — инструменты и навыки для комплектов AutoCAD РД
 
-Аналог «автотестов перед деплоем» для разделов РД в AutoCAD: появилась новая версия раздела (папка с датой) и метка
-`ПРОВЕРИТЬ.txt` → сервис на выделенном ПК проверяет листы на несоответствия, собирает ОД (с согласованием в Telegram),
-сшивает комплект и сообщает статус 🟢/🟡/🔴 в группу объекта.
+Проверка, корректировка и сборка комплектов рабочей документации AutoCAD 2024 + СПДС GraphiCS.
+Два навыка — `autocad-rd` и `check-set` — используют общие скрипты и документацию в Pi и Claude Code.
+Пакет самостоятельный: для работы с чертежами проект сервиса rd-ci не нужен.
 
-**Статус:** проектирование (спецификация v0.2, октябрь 2026). Кода сервиса ещё нет; есть проверенные на проекте
-«Архыз ВО, РД 1 этап» инструменты-исполнители в `toolkit\`.
+Приватный GitHub: https://github.com/yegori/agent-skill-autocad-rd .
+Рабочая копия автора: `D:/yad/YandexDisk/dev/agent-skills/autocad-rd`.
 
-**Плагин Claude Code.** Репозиторий одновременно marketplace `rd-ci-arkhyz` и плагин `rd-ci` (навыки `autocad-rd`, `check-set`).
-Установка для коллег — `docs/INSTALL.md`. Обновления получают все, у кого включено автообновление, сразу после push (версия не задаётся — отслеживаются коммиты).
+## Установка
 
-Приватный репозиторий: https://github.com/yegori/agent-skill-rd-ci . Названия навыков и плагина `rd-ci`, `autocad-rd`, `check-set`, marketplace `rd-ci-arkhyz` сохранены для совместимости.
+На новом ПК нужны доступ к приватному репозиторию и отдельная настройка AutoCAD/СПДС/Python.
+GitHub-вход не переносит лицензии и авторизацию внешних сервисов.
 
-Рабочая копия автора: `D:\yad\YandexDisk\dev\agent-skills\rd-ci\` (латинский путь — кириллица в путях ломает скрипты AutoCAD; см. `docs\11_pitfalls.md`).
+```text
+gh auth login
+gh auth setup-git
+gh repo clone yegori/agent-skill-autocad-rd D:/dev/agent-skills/autocad-rd
+pi install D:/dev/agent-skills/autocad-rd
+```
 
-**Pi.** Этот же репозиторий устанавливается командой `pi install git:github.com/yegori/agent-skill-rd-ci`
-(после публикации изменений) или `pi install D:/yad/YandexDisk/dev/agent-skills/rd-ci` для локальной разработки.
-После `/reload` доступны `/skill:autocad-rd` и `/skill:check-set`. Навыки и инструменты общие с Claude Code;
-подробности — `docs/INSTALL.md`.
+В активной сессии Pi — `/reload`. Для разработки автора:
+`pi install D:/yad/YandexDisk/dev/agent-skills/autocad-rd`.
+Альтернатива без рабочей копии: `pi install git:github.com/yegori/agent-skill-autocad-rd`.
+Использовать только один источник, чтобы не дублировать навыки.
 
-## Карта
+Установка Claude Code (старые внутренние имена сохранены для совместимости):
 
-| Путь | Что |
+```text
+claude plugin marketplace add yegori/agent-skill-autocad-rd
+claude plugin install rd-ci@rd-ci-arkhyz
+```
+
+Полная инструкция, обновление и переход со старых установок — [docs/INSTALL.md](docs/INSTALL.md).
+Скрипт локальной установки Pi: `pwsh -File scripts/install.ps1`.
+
+## Карта пакета
+
+| Путь | Назначение |
 |---|---|
-| `docs/01_spec.md` | Спецификация: жизненный цикл версии, этапы, статусы, правки, бот, права. Всё согласованное. |
-| `docs/02_architecture.md` | Архитектура: ПК, компоненты, очередь, исполнители, хранение, отказоустойчивость. |
-| `docs/03_checks.md` | Каталог проверок (S/F/P/C/V/R/Q) с серьёзностью, классом правки и готовностью; методика проверки объёмов. |
-| `docs/04_passports.md` | Формат паспортов проекта и раздела (`_claude\project.yaml`, `_claude\section.yaml`). |
-| `docs/05_roadmap.md` | План работ: этап 0 (ПК) → MVP «только отчёт» → правки → ОД и сшивка → регрессия. |
-| `docs/06_decisions.md` | Журнал решений с датами. |
-| `docs/07_open_questions.md` | Открытые вопросы. |
-| `docs/10_playbook.md` | Плейбук ручной работы: разведка → тест на одном файле → пакет → проверка → выдача; чек-лист сверки листов. |
-| `docs/11_pitfalls.md` | Грабли AutoCAD / accoreconsole / СПДС / печати / PDF / PowerShell. **Читать перед любой работой с DWG.** |
-| `docs/12_arkhyz_test_cases.md` | Эталонные ошибки Архыза (где, что, чем найти, где состояние «до») — приёмочный тест проверок. |
-| `.claude-plugin/` | `plugin.json` (плагин rd-ci), `marketplace.json` (каталог rd-ci-arkhyz). |
-| `package.json` | Манифест пакета Pi, подключающий общие навыки из `skills/`. |
-| `skills/` | Общие навыки Claude Code и Pi: `autocad-rd` (работа с РД, рецепты), `check-set` (полная проверка комплекта). |
-| `docs/INSTALL.md` | Установка и работа — для коллег. |
-| `docs/PROJECT_CLAUDE_TEMPLATE.md` | Шаблон `CLAUDE.md` для корня папки объекта (знания по объекту живут там, не в плагине). |
-| `examples/` | Примеры паспортов (Архыз: проект и раздел «Водопропуски»); `examples/reports/` — образец сборки таблицы замечаний. |
-| `examples/arkhyz/` | Снимок проектных скриптов и записок Архыза на 17.10.2026 (только чтение). |
-| `toolkit/` | Исполнители: PowerShell + Python + плагин СПДС (см. `toolkit/README.md`). |
+| `skills/autocad-rd/` | Работа с DWG/PDF, рецепты и правила безопасности |
+| `skills/check-set/` | Полная проверка комплекта без изменения выдачи |
+| `toolkit/` | PowerShell/Python и плагин СПДС; [список инструментов](toolkit/README.md) |
+| `docs/03_checks.md` | Общий каталог проверок S/F/P/C/V/R/Q |
+| `docs/10_playbook.md` | Порядок ручной работы и чек-листы |
+| `docs/11_pitfalls.md` | Грабли AutoCAD/СПДС/печати; читать перед работой с DWG |
+| `docs/12_arkhyz_test_cases.md` | Эталонные ошибки для проверки инструментов |
+| `docs/PROJECT_CLAUDE_TEMPLATE.md` | Шаблон инструкции для папки объекта |
+| `docs/06_decisions.md` | Решения по пакету и границе с сервисом |
+| `examples/reports/` | Пример генерации таблицы замечаний |
+| `examples/arkhyz/` | Унаследованные эталонные скрипты и записки (только чтение) |
+| `scripts/` | Установка и статическая проверка пакета |
+| `package.json`, `.claude-plugin/` | Манифесты Pi и Claude Code |
 
-## Окружение
+## Проверки
 
-Windows 10 Pro x64, AutoCAD 2024 (+ Civil 3D Object Enabler), СПДС GraphiCS 2023 x64, PowerShell 7 (`pwsh`), Python 3
-(pymupdf, ezdxf, numpy, scipy, shapely, Pillow, openpyxl, PyYAML), клиент Яндекс.Диска, доступ в интернет (Telegram). Выделенный ПК с удалённым доступом.
+Без запуска AutoCAD и изменения чертежей:
 
-Навыки Claude Code — в `skills/` этого репозитория (личный `~/.claude/skills/autocad-rd` больше не используется).
+```text
+python -I scripts/check_package.py
+claude plugin validate .
+```
+
+На рабочем месте перед DWG: `pwsh -File toolkit/check_env.ps1 -Build`.
+Сборки и временные результаты — только в рабочую папку, не в установленный пакет.
+Переменные `RDCI_WORK`, `RDCI_ACAD_DIR`, `RDCI_SPDS_DIR` сохранены.
+
+## Связь с rd-ci
+
+[rd-ci](https://github.com/yegori/rd-ci) — отдельный проект автоматического сервиса: наблюдатель, очередь, Telegram-бот,
+пайплайн проверки и сборки. Он ссылается на этот пакет как на источник исполнителей, а не хранит вторую копию.
+Спецификация, архитектура и паспорта сервиса находятся там.
+
+30.10.2026 общий репозиторий разделён без переписывания истории: существующий `agent-skill-rd-ci`
+переименован в `agent-skill-autocad-rd`, а сервис выделен в новый `rd-ci` с той же общей историей до разделения.
+Старые коммиты содержат обе части. Имена навыков, Claude-плагина `rd-ci` и marketplace `rd-ci-arkhyz` не менялись.
