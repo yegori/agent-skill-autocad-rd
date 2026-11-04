@@ -20,7 +20,8 @@ param([Parameter(Mandatory)][string[]]$Files, [string]$Find = "(?!)", [string]$R
 $bak = Join-Path $WorkRoot ("backup\txtfix_" + (Get-Date -Format "yyyyMMdd_HHmmss"))
 # dll собирается в рабочую папку; пересборка, если исходник новее (после обновления плагина)
 $dll = Join-Path $WorkRoot "bin\SpdsText.dll"
-if (-not (Test-Path $dll) -or (Get-Item "$PSScriptRoot\SpdsText.cs").LastWriteTime -gt (Get-Item $dll).LastWriteTime) { & "$PSScriptRoot\build_txtfix.ps1" | Out-Host }
+$sourceTime = (Get-Item "$PSScriptRoot\SpdsText.cs", "$PSScriptRoot\SpdsDependencies.cs" | Measure-Object LastWriteTime -Maximum).Maximum
+if (-not (Test-Path $dll) -or $sourceTime -gt (Get-Item $dll).LastWriteTime) { & "$PSScriptRoot\build_txtfix.ps1" | Out-Host }
 if (-not (Test-Path $dll)) { "!!! нет SpdsText.dll — см. сообщение сборки"; return }
 $w = Join-Path $WorkRoot "txtfix"; Remove-Item $w -Recurse -Force -ErrorAction SilentlyContinue
 $jobs = Copy-DwgToWork $Files $w

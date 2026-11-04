@@ -107,6 +107,7 @@ claude plugin install rd-ci@rd-ci-arkhyz
 
 ```text
 python -I scripts/check_package.py
+pwsh -File scripts/test_spds_dependencies.ps1
 claude plugin validate .
 ```
 
@@ -117,7 +118,11 @@ pwsh -File "<корень пакета>/toolkit/check_env.ps1" -Build
 ```
 
 Скрипт проверит AutoCAD, СПДС, Python, Excel/Word и соберёт SpdsText в рабочую папку.
-Он не устанавливает AutoCAD/СПДС. При ошибках сначала устранить причины, не переходить к DWG.
+Это статическая проверка наличия компонентов, не проверка лицензий и выполнения команд AutoCAD.
+`test_spds_dependencies.ps1` использует только сгенерированные фиктивные сборки; реальные DLL СПДС не загружает.
+При запуске `TXTFIX` реальные зависимости загружаются внутри AutoCAD в порядке `MapiBaseTypes` → `mapimgd`;
+для нестандартной установки задать `RDCI_SPDS_DIR`. Подробности — `docs/11_pitfalls.md`.
+`check_env.ps1` не устанавливает AutoCAD/СПДС. При ошибках сначала устранить причины, не переходить к DWG.
 
 ## Работа и безопасность
 

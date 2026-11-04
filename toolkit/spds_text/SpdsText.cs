@@ -62,6 +62,15 @@ namespace SpdsText
             dry = Environment.GetEnvironmentVariable("TXT_DRY") == "1";
             Seen = Environment.GetEnvironmentVariable("TXT_SEEN");
             log = new StreamWriter(logPath ?? Path.Combine(Path.GetTempPath(), "txtfix.log"), false, new UTF8Encoding(false));
+            try
+            {
+                SpdsDependencies.Install(Environment.GetEnvironmentVariable("RDCI_SPDS_DIR"), L);
+                SpdsDependencies.Preload();
+            }
+            catch (System.Exception ex)
+            {
+                L("ERROR|dependency_setup|" + ex.Message); L("ALLDONE"); log.Close(); log = null; return;
+            }
             // 22.10: неверный regex (напр. «\P» вместо «\\P») бросал исключение вне try → модальное окно AutoCAD, пакет вставал. Теперь — ERROR в журнал и выход.
             Pairs = new List<KeyValuePair<Regex, string>>();
             try

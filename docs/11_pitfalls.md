@@ -24,6 +24,16 @@
 
 ## СПДС GraphiCS (MultiCAD .NET API)
 
+- **На новом ПК `TXTFIX` может падать с `FileNotFoundException: mapimgd`, хотя СПДС вручную работает.**
+  Выбор профиля СПДС и даже запуск через интегратор CSoft сами по себе не устранили ошибку в проверенном окружении.
+  Перед обработкой DWG требуется явно загрузить **сначала `MapiBaseTypes`, затем `mapimgd`** из папки установленного СПДС,
+  до JIT-компиляции методов, использующих типы MultiCAD. Это выполняет `SpdsDependencies` внутри `acad.exe`;
+  один лишь отложенный `AssemblyResolve` оказался недостаточен. Загрузчик ограничен этими двумя сборками и проверяет
+  их идентичность/версию; папка задаётся `RDCI_SPDS_DIR` (по умолчанию штатная папка СПДС 2023).
+  Не копировать DLL поставщика в репозиторий и не загружать реальные сборки из внешних тестов/PowerShell.
+  Проверено 04.11.2026: `-Dry`, 136 текстовых объектов, `DONE|changed=0|mcs=0`, `ALLDONE`, хеш исходника неизменен.
+  Этот тест подтверждает загрузку API и чтение обычных текстов, **не** чтение настоящих объектов СПДС (`mcs=0`).
+
 - Сборки: `C:\Program Files\CSoft\СПДС GraphiCS 2023 x64\mg142x64\mapimgd.dll`, `mapibasetypes.dll`. Документация в `mapimgd.xml` неполная, члены классов смотреть рефлексией (`spds_text\refl_spds.ps1`, Windows PowerShell 5.1).
 - Объект по id AutoCAD: `McObjectManager.GetObject(McObjectId.FromOldIdPtr(id.OldIdPtr))`.
   - Таблица `mcsDbObjectTable2` → `McTable`: `t[r,c].Value`, `t.Rows.Count`, `t.Columns.Count`.
