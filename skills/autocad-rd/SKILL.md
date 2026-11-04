@@ -25,6 +25,9 @@ description: Use when the user works with AutoCAD/Civil 3D drawing sets of worki
 - `${CLAUDE_PLUGIN_ROOT}/examples/` — проектные скрипты и пример сводной таблицы замечаний.
 
 Полная проверка комплекта по шагам — навык `check-set` этого плагина.
+Для автономного JSON-задания от оркестратора с `job_id`, `output_dir` и `result_file` —
+`${CLAUDE_PLUGIN_ROOT}/docs/13_orchestrator.md`: выполнить выбранную операцию и обязательно сохранить manifest результата.
+Это не разрешение менять исходные DWG или расширять объём проверки.
 
 Скрипты брать из `toolkit/`, не писать заново.
 
