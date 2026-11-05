@@ -4,9 +4,9 @@
 param([switch]$Build)
 . "$PSScriptRoot\common.ps1"
 $ok = $true
-function Row([string]$what, [bool]$good, [string]$detail, [string]$fix = "") {
-  $mark = if ($good) { "OK " } else { "!! " }
-  if (-not $good) { $script:ok = $false }
+function Row([string]$what, [bool]$good, [string]$detail, [string]$fix = "", [switch]$Optional) {
+  $mark = if ($good) { "OK " } elseif ($Optional) { "-- " } else { "!! " }
+  if (-not $good -and -not $Optional) { $script:ok = $false }
   "{0} {1,-34} {2}" -f $mark, $what, $detail
   if (-not $good -and $fix) { "     → $fix" }
 }
@@ -19,7 +19,7 @@ $csc = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 Row ".NET Framework csc (сборка плагина)" (Test-Path $csc) $csc ""
 Row "Рабочая папка без кириллицы" ($WorkRoot -match '^[\x20-\x7E]+$') $WorkRoot "задать переменную RDCI_WORK, напр. C:\rd-ci-work"
 $pmp = Join-Path $env:APPDATA "Autodesk\AutoCAD 2024\R24.3\rus\Plotters\PMP Files\DWG To PDF.pmp"
-Row "Файл форматов DWG To PDF.pmp" (Test-Path $pmp) $pmp "запустить AutoCAD хотя бы раз; при другой версии/языке путь иной — нестандартные форматы добавлять вручную"
+Row "PMP (нестандартные форматы)" (Test-Path $pmp) $pmp "не обязателен для стандартных ISO/ANSI; перед печатью проверить форматы макетов через check_papers.ps1 без -Add. Нестандартный формат без носителя — ограничение; настройки автоматически не менять" -Optional
 $py = Get-Command python -ErrorAction SilentlyContinue
 Row "Python 3" ([bool]$py) $(if ($py) { (& python --version 2>&1) } else { "не найден" }) "установить Python 3.11+ (python.org), отметить «Add to PATH»"
 if ($py) {
@@ -34,4 +34,4 @@ $wd = $null; try { $wd = [Type]::GetTypeFromProgID("Word.Application") } catch {
 Row "Word (обложки .doc → PDF)" ([bool]$wd) $(if ($wd) { "есть" } else { "нет — make_cover.ps1 не будет работать" }) ""
 if ($Build -and (Test-Path $csc)) { "`nСборка плагина СПДС:"; & "$PSScriptRoot\spds_text\build_txtfix.ps1" }
 ""
-if ($ok) { "Всё готово." } else { "Есть замечания (!!) — см. подсказки «→»." }
+if ($ok) { "Базовое окружение готово. Форматы конкретных макетов проверить отдельно; необязательные пункты отмечены --." } else { "Есть замечания (!!) — см. подсказки «→»; применимость к выбранной операции проверять отдельно." }
