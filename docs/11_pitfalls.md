@@ -22,6 +22,26 @@
 - **Не запускать одновременно с accoreconsole**: acad.exe падает с «Unhandled Access Violation». Повторный запуск в одиночку проходит.
 - AutoCAD пользователя может быть открыт с файлом из того же комплекта. Не трогать: проверить занятость, отложить замену.
 
+### Lifetime GUI TXTFIX и служебные потомки (08.11.2026)
+
+- Не завершать даже запущенный нами acad через Stop-Process -Id: использовать held handles/частный Job.
+  `OwnedCadProcess.cs` создаёт native процесс suspended, назначает в unnamed/non-inheritable kill-on-close Job,
+  только затем ResumeThread. `owned_acad.ps1` ждёт ALLDONE/timeout/exit и очищает только своё Job-семейство.
+- Один остановленный acad не означает пустую семью: в disconnected тесте остался принадлежащий outer Job
+  AdskLicensingAgent.exe. Два прежних полных запуска корректно failed/owned_descendants_left, хотя native read
+  уже дал changed=0/37 mcs/306 HIT. Не превращать такой outcome в completed по одному raw log.
+- Вложенный per-CAD Job предназначен для очистки собственных обычных потомков, а не внешней licensing service.
+  Ни искать/завершать процессы по этому имени, ни менять Autodesk licensing настройки нельзя.
+  COM/WMI/service brokers не охвачены; это не sandbox/общий CAD mutex. Timeout/недостающий ALLDONE теперь
+  явная txtfix_incomplete ошибка до -Apply; не заменять источники по частичному журналу.
+- Восемь изолированных native проверок (включая root-exited потомков/quoting) — `scripts/test_txtfix_process.ps1`.
+  Финальный настоящий Pi → GUI acad → -Dry в disconnected прошёл с новым вложенным Job:
+  37 mcs/3 таблицы/256 cell records/306 HIT/changed=0, outer Job пуст без TerminateJobObject,
+  66 защищённых файлов/28 Plotters прежние. Это чтение, не SaveAs/инженерная приёмка/проверка всех GUI-режимов.
+  Первые два runtime failed сохранены. В третьем runtime completed, но исходный audit ошибочно требовал ровно
+  2 DEPENDENCY log lines: загрузчик записал 4 (повторные те же две identity). Отдельный read-only audit проверил
+  правильный первый порядок/отсутствие ошибок/хеши; исходный audit failure не затёрт, новый CAD не запускался.
+
 ## СПДС GraphiCS (MultiCAD .NET API)
 
 - **На новом ПК `TXTFIX` может падать с `FileNotFoundException: mapimgd`, хотя СПДС вручную работает.**

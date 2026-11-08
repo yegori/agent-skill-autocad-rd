@@ -45,6 +45,7 @@ claude plugin install rd-ci@rd-ci-arkhyz
 | `docs/10_playbook.md` | Порядок ручной работы и чек-листы |
 | `docs/11_pitfalls.md` | Грабли AutoCAD/СПДС/печати; читать перед работой с DWG |
 | `docs/12_arkhyz_test_cases.md` | Эталонные ошибки для проверки инструментов |
+| `docs/14_stage_plan.md`, `toolkit/plan_stages.py` | Черновой PDF-план из явного inventory, не executor/автоматическое разрешение |
 | `docs/PROJECT_CLAUDE_TEMPLATE.md` | Шаблон инструкции для папки объекта |
 | `docs/06_decisions.md` | Решения по пакету и границе с сервисом |
 | `examples/reports/` | Пример генерации таблицы замечаний |
@@ -59,7 +60,12 @@ claude plugin install rd-ci@rd-ci-arkhyz
 ```text
 python -I scripts/check_package.py
 claude plugin validate .
+python -I -m unittest discover -s scripts -p test_stage_plan.py -q
+pwsh -NoProfile -File scripts/test_txtfix_process.ps1
 ```
+
+Последняя команда проверяет только фиктивные native процессы/частный Job, не запускает CAD и не загружает MultiCAD.
+`run_txtfix` назначает приостановленный GUI-процесс в собственный Job до первого выполнения; источники этим не разрешается менять.
 
 На рабочем месте перед DWG: `pwsh -File toolkit/check_env.ps1 -Build`.
 Сборки и временные результаты — только в рабочую папку, не в установленный пакет.

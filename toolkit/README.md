@@ -14,6 +14,8 @@
 | `fix_layouts.ps1` | Переименование макетов, удаление пустых. |
 | `xrefs.ps1` | Внешние ссылки: отчёт OK / НЕ ОТНОСИТЕЛЬНЫЙ / НЕТ ФАЙЛА (S4); `-Relativize` → `.\Внешние_ссылки\<файл>`; `-CopyMissingFrom`. |
 | `plot_set.ps1`, `merge_set.py` | Печать всех макетов в `NNN <наименование>.pdf` (перед печатью — проверка форматов) и сводный PDF (обложка + листы). |
+| `plan_stages.py` | Draft PDF-план из package-owned inventory/оценок: порядок, sheet/start counts, budget/reserve, stable IDs; не разведка/исполнитель/reuse. См. `../docs/14_stage_plan.md`. |
+| `spds_text/owned_acad.ps1`, `spds_text/OwnedCadProcess.cs` | Частный Job для GUI-исполнителя TXTFIX: suspended CreateProcess → assign → resume, очистка только своего семейства (включая оставшихся потомков), без PID/name kill. |
 | `make_cover.ps1` | Обложка/титул из шаблона .doc(x): замены через Word COM → PDF. |
 | `clean_issue.ps1` | Мусор в папке выдачи (`*.bak`, `_recover`, `plot.log`, `*.dwl*`…): отчёт, `-Apply` — перенос в резервную папку. |
 | `spds_text\` | Найти/заменить текст, вкл. таблицы и выноски СПДС, без взрыва; режим `-Mode props` — свойства объектов СПДС (напр. отметки уровня). Отдельный acad.exe + плагин `SpdsText.cs` (`build_txtfix.ps1`). |

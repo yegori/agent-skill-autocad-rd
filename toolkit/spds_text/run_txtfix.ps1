@@ -41,15 +41,10 @@ Write-Scr $scr @"
 (setvar "SECURELOAD" sl)
 TXTFIX
 "@
-$sw = [Diagnostics.Stopwatch]::StartNew()
-$p = Start-Process $AcadExe -ArgumentList "/nologo /b `"$scr`"" -PassThru
-while ($sw.Elapsed.TotalSeconds -lt $TimeoutSec) {
-  Start-Sleep 3
-  if ((Test-Path $log) -and (Select-String -Path $log -Pattern "^ALLDONE" -Quiet)) { Start-Sleep 2; break }
-  if ($p.HasExited) { break }
-}
-if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force }
-"сек: " + [int]$sw.Elapsed.TotalSeconds
+. "$PSScriptRoot\owned_acad.ps1"
+$execution = Invoke-OwnedTxtfixProcess -FilePath $AcadExe -Arguments @('/nologo', '/b', $scr) -Log $log -TimeoutSec $TimeoutSec
+"сек: " + [int]$execution.ElapsedSeconds
+if (-not $execution.AllDone) { throw "txtfix_incomplete: timed_out=$($execution.TimedOut); owned process stopped" }
 if (-not (Test-Path $log)) { "!!! журнала нет — команда TXTFIX не стартовала: acad.exe упал (не запускать параллельно с accoreconsole) или не загрузился плагин (см. командную строку окна AutoCAD; путь к dll и перевод строки в конце .scr)"; return }
 # разбор журнала по файлам
 $cur = $null; $per = @{}; $hits = @{}
