@@ -32,6 +32,8 @@ description: Use when the user works with AutoCAD/Civil 3D drawing sets of worki
 нужен явный inventory с counts/timings/hash; draft не запускает CAD и не разрешает исполнение/reuse.
 Ограниченная read-only разведка до трёх подготовленных копий — `docs/15_resource_inventory.md`:
 inspect_resources → resource_inventory. Она запускает CAD, требует явного допуска и не печатает/не меняет PMP.
+Явный staging snapshots/working/environment bindings и отдельный тестовый ControlledPlot — `docs/16_staging_plot.md`.
+Stage prepared/verified не означает полноту зависимостей, авторизацию или разрешение reuse.
 
 Скрипты брать из `toolkit/`, не писать заново.
 

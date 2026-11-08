@@ -47,6 +47,10 @@ adaptive replanning и artifact reuse этим producer ещё не реализ
 явное controlled metadata completion с private Job, затем raw/source SHA validation и консервативный draft.
 Натуральный native crash не переклассифицируется в success, draft не запускает CAD/печать/стейджинг.
 
+Явный snapshot/working/environment staging — `docs/16_staging_plot.md`. Его prepared/verified checksum
+и plan/step ссылки не авторизуют execution и не доказывают dependency completeness. ControlledPlot — отдельный
+явно допущенный тест с PDF validation/owner Job cleanup, не whitelist QUIT crash и не общий pipeline/reuse.
+
 ## Обязательный результат
 
 Перед завершением создай UTF-8 JSON **строго по пути `result_file`**:

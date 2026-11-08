@@ -105,6 +105,19 @@
   идентичной. Сохранять отдельный неизменный снимок; внутренний DWG не выдавать как исправленный/новый исходник.
   Допустимость такого автосохранения должна быть явно учтена в объёме печати, не подразумевать разрешение инженерных правок.
 
+### Staging и ControlledPlot (08.11.2026)
+
+- `stage_inputs.py` — только явные source/snapshot/working/environment SHA bindings; coverage explicit_not_discovered,
+  всегда execution_authorized=false. Prepared/verified checksum не полнота xref/font/registry/search paths/не авторизация.
+  Имена в snapshot/working полные, spool отдельно. Reparse проверять **до** рекурсивного обхода, не после rglob.
+- ControlledRead не стал режимом печати. Отдельный `plot_set -NoPaperCheck -ControlledPlot` для явно допущенного теста:
+  PDF-команды в одном progn → marker/live root → cleanup private Job → PyMuPDF count/open validation/отдельный merge.
+  Completion owned_job_after_pdf_commands, exit_code=null; default natural nonzero теперь явный отказ даже при готовом PDF.
+  Нельзя применять к SaveAs/выдавать marker за качество документа или игнорировать AV.
+- Genuine known A4 в disconnected: stage verify до/после, два PDF = reference по рендеру,
+  67 protected/28 Plotters прежние, outer Job пуст без termination. 653 declared font/Plotters bindings — не discovery,
+  ~2.1 секунды measured print — не cold/family calibration. Ограничения/API/11+5 checks — docs/16_staging_plot.md.
+
 ## PDF-проверка
 
 - Текст SHX в PDF — векторная графика, не текст. Проверять рендером (pymupdf `get_pixmap(clip=…)`) и смотреть глазами. Учитывать, что крупные картинки показываются уменьшенными.
