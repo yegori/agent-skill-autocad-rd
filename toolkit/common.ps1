@@ -28,12 +28,43 @@ function Test-LispParens([string]$Text) {
 # Запуск accoreconsole: DWG + текст скрипта. Возвращает строки лога (без NUL).
 # Скрипт должен заканчиваться выходом: (command "_.QUIT" "_N") — или "_.QSAVE" перед ним.
 function Invoke-AccCore([string]$Dwg, [string]$ScriptText, [string]$Log, [int]$TimeoutSec = 900) {
+  $Global:AccCoreLastRun = $null
+  if ($TimeoutSec -lt 1 -or $TimeoutSec -gt 2147483) { throw 'invalid_accore_timeout' }
   if (-not (Test-LispParens $ScriptText)) { throw "Несбалансированные скобки в скрипте для $Dwg" }
   $scr = [IO.Path]::ChangeExtension($Log, ".scr")
   Write-Scr $scr $ScriptText
-  $p = Start-Process -FilePath $AccCore -ArgumentList "/i `"$Dwg`" /s `"$scr`" /l ru-RU" -NoNewWindow -PassThru -RedirectStandardOutput $Log
-  if (-not $p.WaitForExit($TimeoutSec * 1000)) { $p.Kill(); return @("KILLED") }
-  return ((Get-Content $Log -Raw) -replace "`0", "") -split "`n"
+  # Start-Process -PassThru may lose the native handle and yield a null ExitCode after a long wait.
+  # Direct Process.Start retains its original CreateProcess handle (also used for any termination).
+  $start = [Diagnostics.ProcessStartInfo]::new()
+  $start.FileName = $AccCore; $start.UseShellExecute = $false; $start.RedirectStandardOutput = $true; $start.CreateNoWindow = $true
+  foreach ($argument in @('/i', $Dwg, '/s', $scr, '/l', 'ru-RU')) { $start.ArgumentList.Add($argument) }
+  $p = [Diagnostics.Process]::new(); $p.StartInfo = $start
+  $stream = [IO.File]::Open($Log, [IO.FileMode]::Create, [IO.FileAccess]::Write, [IO.FileShare]::Read)
+  $started = $false
+  try {
+    if (-not $p.Start()) { throw 'accore_start_failed' }
+    $started = $true
+    $held = $p.SafeHandle
+    if ($held.IsInvalid -or $held.IsClosed) { throw 'accore_handle_unavailable' }
+    $pump = $p.StandardOutput.BaseStream.CopyToAsync($stream)
+    $timedOut = -not $p.WaitForExit($TimeoutSec * 1000)
+    if ($timedOut) {
+      try { $p.Kill() } catch [InvalidOperationException], [ComponentModel.Win32Exception] { if (-not $p.HasExited) { throw } }
+      if (-not $p.WaitForExit(10000)) { throw 'accore_cleanup_uncertain' }
+    }
+    if (-not $pump.Wait(10000)) { throw 'accore_stdout_cleanup_uncertain' }
+    $stream.Flush()
+    $Global:AccCoreLastRun = @{ Status = $(if ($timedOut) { 'timed_out' } elseif ($p.ExitCode -eq 0) { 'completed' } else { 'failed' }); ExitCode = $p.ExitCode }
+    if ($timedOut) { return @('KILLED') }
+    return ((Get-Content $Log -Raw) -replace "`0", "") -split "`n"
+  } finally {
+    try {
+      if ($started -and -not $p.HasExited) {
+        $p.Kill()
+        if (-not $p.WaitForExit(10000)) { throw 'accore_cleanup_uncertain' }
+      }
+    } finally { $p.Dispose(); $stream.Dispose() }
+  }
 }
 
 # Файл свободен (не открыт в AutoCAD у пользователя)? .dwl рядом бывают старыми — им не верить.

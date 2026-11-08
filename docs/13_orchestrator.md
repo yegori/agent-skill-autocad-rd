@@ -43,6 +43,9 @@ SHA снимка и измеренной/явной консервативной
 Результат draft/execution_authorized=false — не manifest выполнения/разрешение CAD. Разведка/staging/исполнитель,
 adaptive replanning и artifact reuse этим producer ещё не реализованы. Unknown metadata → needs_input,
 не оценка по одним байтам и не увеличение timeout. Не ослаблять ограничения текущего runner/worker.
+Ограниченная разведка до трёх подготовленных копий — `docs/15_resource_inventory.md`: только read-only,
+явное controlled metadata completion с private Job, затем raw/source SHA validation и консервативный draft.
+Натуральный native crash не переклассифицируется в success, draft не запускает CAD/печать/стейджинг.
 
 ## Обязательный результат
 

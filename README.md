@@ -46,6 +46,7 @@ claude plugin install rd-ci@rd-ci-arkhyz
 | `docs/11_pitfalls.md` | Грабли AutoCAD/СПДС/печати; читать перед работой с DWG |
 | `docs/12_arkhyz_test_cases.md` | Эталонные ошибки для проверки инструментов |
 | `docs/14_stage_plan.md`, `toolkit/plan_stages.py` | Черновой PDF-план из явного inventory, не executor/автоматическое разрешение |
+| `docs/15_resource_inventory.md`, `toolkit/inspect_resources.ps1`, `toolkit/resource_inventory.py` | До трёх read-only probe, raw evidence/SHA/timings → проверенный консервативный draft, не печать |
 | `docs/PROJECT_CLAUDE_TEMPLATE.md` | Шаблон инструкции для папки объекта |
 | `docs/06_decisions.md` | Решения по пакету и границе с сервисом |
 | `examples/reports/` | Пример генерации таблицы замечаний |
@@ -62,9 +63,11 @@ python -I scripts/check_package.py
 claude plugin validate .
 python -I -m unittest discover -s scripts -p test_stage_plan.py -q
 pwsh -NoProfile -File scripts/test_txtfix_process.ps1
+python -I -m unittest discover -s scripts -p test_resource_inventory.py -q
+pwsh -NoProfile -File scripts/test_resource_probe.ps1
 ```
 
-Последняя команда проверяет только фиктивные native процессы/частный Job, не запускает CAD и не загружает MultiCAD.
+PowerShell test-скрипты используют только фиктивные native процессы, не Autodesk/DWG/MultiCAD.
 `run_txtfix` назначает приостановленный GUI-процесс в собственный Job до первого выполнения; источники этим не разрешается менять.
 
 На рабочем месте перед DWG: `pwsh -File toolkit/check_env.ps1 -Build`.

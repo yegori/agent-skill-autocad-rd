@@ -30,6 +30,8 @@ description: Use when the user works with AutoCAD/Civil 3D drawing sets of worki
 Это не разрешение менять исходные DWG или расширять объём проверки.
 Для чернового разбиения PDF на подэтапы — `docs/14_stage_plan.md` / `toolkit/plan_stages.py`:
 нужен явный inventory с counts/timings/hash; draft не запускает CAD и не разрешает исполнение/reuse.
+Ограниченная read-only разведка до трёх подготовленных копий — `docs/15_resource_inventory.md`:
+inspect_resources → resource_inventory. Она запускает CAD, требует явного допуска и не печатает/не меняет PMP.
 
 Скрипты брать из `toolkit/`, не писать заново.
 

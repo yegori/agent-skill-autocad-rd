@@ -60,10 +60,12 @@ CLI пишет только новый файл (exclusive create), сущест
 
 ## Что ещё НЕ реализовано
 
-Автоматическое получение layout inventory, калибровка cost families/cold starts/СПДС/xref, физический staging
+Полное покрытие layout inventory комплекта, калибровка cost families/cold starts/СПДС/xref, физический staging
 копий/зависимостей, отдельная сборка и независимая PDF-проверка, adaptive replanning, исполнение plan из rd-ci
 и безопасный reuse intermediates. SHA одного DWG **недостаточен для reuse**: нужны также xref/шрифты/plot options,
 версии методов, artifact hashes и validation evidence. По одному plan_id не возобновлять и не переиспользовать.
 
+Ограниченный resource collector/проверка raw evidence и начальная консервативная cost policy добавлены в
+[15_resource_inventory.md](15_resource_inventory.md): до трёх подготовленных входов, не автоматический полный комплект.
 Single-DWG gate cad_pdf в rd-ci не снят. Следующий шаг — соединить этот черновик с настоящей package-owned
 разведкой/стейджингом и фазами inspect → plot → assemble → validate, а не просто передать список файлов старому worker.

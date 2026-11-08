@@ -13,6 +13,20 @@
 - В консоли объекты СПДС — `ACAD_PROXY_ENTITY`, правке не поддаются. `arxload mcsenabler.dbx` в консоли не работает.
 - Параллельно 10+ консолей на тяжёлых файлах — плохая идея. Запускать по одной.
 
+### Ресурсное чтение и сбой QUIT (08.11.2026)
+
+- На двух реальных inputs после записи корректной metadata accoreconsole завершался access violation
+  -1073741819/0xC0000005 при QUIT. Не считать наличие p1.txt успехом; три failed jobs оставлены failed.
+- inspect_resources вызывает только check_papers -ControlledRead: единый progn read → close metadata →
+  ALLDONE marker → DELAY до owner cleanup. Ошибка Lisp не может продолжиться к отдельной строке marker.
+  Native root должен быть жив до Stop, затем проверяется empty private Job. exit_code=null и explicit
+  owned_job_after_metadata, не выдуманный 0/whitelist AV. Режим только чтения, не печать/SaveAs.
+- Default check_papers оставляет QUIT; common Invoke-AccCore использует direct Process.Start/held SafeHandle,
+  bounded async stdout и typed AccCoreLastRun. Unknown/ненулевой code/timeout нельзя скрывать human summary.
+- Финальный read-only проход 3 копий (1/2/1 layouts) прошёл в disconnected; 68 protected/28 Plotters прежние.
+  Неизвестные format/device малого входа блокируют whole draft; explicit subset не равен всему комплекту.
+  Контракт/10 converter tests/5 fake-native scenarios — docs/15_resource_inventory.md.
+
 ## Полный acad.exe в пакетном режиме (нужен для СПДС)
 
 - `acad.exe /nologo /b run.scr` **без чертежа**. Файлы открывает сам плагин (`DocumentManager.Open`): если передать DWG в командной строке, модальное окно «Информация о прокси-объектах» заблокирует скрипт. Поэтому на время работы `PROXYNOTICE = 0`, потом вернуть.
