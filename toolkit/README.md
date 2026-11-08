@@ -14,6 +14,7 @@
 | `fix_layouts.ps1` | Переименование макетов, удаление пустых. |
 | `xrefs.ps1` | Внешние ссылки: отчёт OK / НЕ ОТНОСИТЕЛЬНЫЙ / НЕТ ФАЙЛА (S4); `-Relativize` → `.\Внешние_ссылки\<файл>`; `-CopyMissingFrom`. |
 | `plot_set.ps1`, `merge_set.py` | Печать всех макетов в `NNN <наименование>.pdf` (перед печатью — проверка форматов) и сводный PDF (обложка + листы). |
+| `inspect_dependencies.ps1`, `dependencies/DependencyProbe.cs`, `dependency_inventory.py` | Experimental direct side-DB refs/fonts/assets/layout metadata; не actual closure/authorization. Native acceptance ещё НЕ пройдена, `../docs/17_dependency_probe.md`. |
 | `stage_inputs.py` | Новые snapshot/working, declared file/environment hashes, exact verify/plan-step refs; coverage explicit_not_discovered, всегда execution_authorized=false. `../docs/16_staging_plot.md`. |
 | `inspect_resources.ps1`, `resource_inventory.py` | До трёх serial check_papers без Add, source/raw hashes/layouts/durations/exit codes; validation → conservative inventory/draft. `../docs/15_resource_inventory.md`; не print/reuse. |
 | `plan_stages.py` | Draft PDF-план из package-owned inventory/оценок: порядок, sheet/start counts, budget/reserve, stable IDs; не разведка/исполнитель/reuse. См. `../docs/14_stage_plan.md`. |
