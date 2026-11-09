@@ -1,7 +1,14 @@
 # Direct dependencies через side Database — эксперимент, native acceptance НЕ пройдена
 
-08.11.2026. Продолжение explicit staging (`16_staging_plot.md`). Новые методы **не развёрнуты** в рабочем
-пакете RYZENDT: там остаётся проверенный a8f1a54. Не включать печать/общий consumer по этой заготовке.
+08.11.2026. Продолжение explicit staging (`16_staging_plot.md`). Не включать печать/общий consumer по этой заготовке.
+
+09.11 старый service-инцидент закрыт отдельным протоколом rd-ci docs/32, новый files-only Pi completed.
+Это не native acceptance reader. До нового ограниченного прогона исправлен конфликт `$host` с read-only `$Host`
+и добавлен режим **`--issue-only`**: только точные относительные пути внутри выбранной выдачи, без external roots,
+поиска по basename/системным Fonts и подстановок. Absolute/UNC/drive-relative/ADS/escape → вопрос с исходным
+name/path; такой файл не хешируется/не добавляется. Root reparse проверяется до resolve. Остальные omissions
+и dependency_complete=false сохраняются. Host по-прежнему отдельный проверенный технический тестовый файл,
+не проектная зависимость и не разрешение брать шрифты/подложки из других выдач.
 
 ## Зачем отдельный side database reader
 
@@ -39,13 +46,24 @@ pwsh -NoProfile -File toolkit/inspect_dependencies.ps1 -SourceDwg <copy.dwg> -Ho
 python -I toolkit/dependency_inventory.py <evidence> --source-root <authorized-input> --source-path <relative.dwg> --environment-roots <local-roots.json> --output <new-inventory.json>
 ```
 
-10 unit tests без CAD: partial/no auth, parent escape without file read, nested refs, assets/missing,
+Для согласованного relative-only scope:
+
+```text
+python -I toolkit/dependency_inventory.py <evidence> --source-root <selected-snapshot> --source-path <relative.dwg> --issue-only --output <new-inventory.json>
+```
+
+`--issue-only` и `--environment-roots` взаимоисключающие; прежний explicit-roots API сохранён для иных явно
+разрешённых задач. No external roots в issue-only проверяется до чтения источника; отсутствие шрифта — needs_input,
+не автоматическая замена. PowerShell wrapper отказывает для reparse source/host/output и не-ASCII EvidenceDir
+до native старта; полное имя source copy сохраняется. Fake-wrapper test не загружает Autodesk.
+
+16 unit tests без CAD (включая 6 issue-only cases) + `scripts/test_dependency_probe.ps1` (fake compiler/process, 3 сценария): partial/no auth, parent escape without file read, nested refs, assets/missing,
 missing/ambiguous/registry fonts, unproven completion/source drift, raw-evidence hash/exclusive output,
 reserved root/omissions. `check_package.py` — 26 Python sources; local Claude plugin validation passed
 с прежним missing-version warning. ABI C# успешно скомпилирован против реальных AutoCAD 2024 DLL на RYZENDT,
 **это не выполнение plugin/не подтверждение работоспособности native API**.
 
-## Почему нет native acceptance
+## История первой попытки native acceptance (08.11; service-инцидент уже закрыт)
 
 Private acceptance driver использовал общий monitor/Job wrapper. Его локальная переменная original (Path)
 затёрла original Job factory в globals. После durable execution_guard running, но **до job_api.Job/_exchange/Popen**
