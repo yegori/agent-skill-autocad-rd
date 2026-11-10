@@ -30,6 +30,7 @@ if ((Get-FileHash -LiteralPath $copy -Algorithm SHA256).Hash.ToLowerInvariant() 
 $marker = Join-Path $evidence 'native.complete';$raw = Join-Path $evidence 'native.json';$dll = Join-Path $evidence 'DependencyProbe.dll'
 $request = Join-Path $evidence 'request.json';@{source=$copy;report=$raw;marker=$marker} | ConvertTo-Json | Set-Content -LiteralPath $request -Encoding utf8
 $previous = $env:RDCI_DEP_REQUEST
+$owned = $null
 try {
   $csc = Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
   # Framework csc normalizes mixed-slash source arguments incorrectly; use native paths throughout.
@@ -38,7 +39,18 @@ try {
   & $csc /nologo /target:library "/out:$dll" @references /r:System.Web.Extensions.dll $code 2>&1 | Set-Content -LiteralPath (Join-Path $evidence 'build.txt') -Encoding utf8
   if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $dll)) { throw 'dependency_build_failed' }
   $env:RDCI_DEP_REQUEST = $request
-  $lisp = $LispHead + "`n(command `"_.NETLOAD`" `"$($dll.Replace('\','/'))`")`n(command `"RDDEPENDENCIES`")`n(while T (command `"_.DELAY`" 1000))`n"
+  # Same temporary NETLOAD policy as run_txtfix; restore before any source database read.
+  $lisp = $LispHead + @"
+
+(setq rd_dep_sl (getvar "SECURELOAD"))
+(setvar "SECURELOAD" 0)
+(setq rd_dep_dll "$($dll.Replace('\','/'))")
+(setq rd_dep_load (vl-catch-all-apply 'command (list "_.NETLOAD" rd_dep_dll)))
+(setvar "SECURELOAD" rd_dep_sl)
+(if (or (vl-catch-all-error-p rd_dep_load) (/= (getvar "SECURELOAD") rd_dep_sl)) (exit))
+(command "RDDEPENDENCIES")
+(while T (command "_.DELAY" 1000))
+"@
   $scr = Join-Path $evidence 'probe.scr';Write-Scr $scr $lisp
   $owned = Invoke-OwnedTxtfixProcess -FilePath $AccCore -Arguments @('/i',$hostCopy,'/s',$scr,'/l','ru-RU') -Log $marker -TimeoutSec $TimeoutSec
   if (-not $owned.AllDone -or $owned.TimedOut -or $owned.RootExitedBeforeStop -ne $false -or -not $owned.Terminated) { throw 'dependency_native_incomplete' }
@@ -52,6 +64,6 @@ try {
   $report | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $evidence 'probe.json') -Encoding utf8
   [pscustomobject]@{status='observed_partial';xrefs=@($native.xrefs).Count;fonts=@($native.fonts).Count;assets=@($native.assets).Count;layouts=@($native.layouts).Count;execution_authorized=$false} | ConvertTo-Json -Compress
 } catch {
-  @{status='failed';execution_authorized=$false;error=$_.Exception.Message} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $evidence 'failure.json') -Encoding utf8
+  @{status='failed';execution_authorized=$false;error=$_.Exception.Message;owned=$owned} | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $evidence 'failure.json') -Encoding utf8
   throw
 } finally { $env:RDCI_DEP_REQUEST = $previous }

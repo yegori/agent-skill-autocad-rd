@@ -15,6 +15,13 @@ name/path; такой файл не хешируется/не добавляет
 Исправление — native `Join-Path` source и references, fake compiler теперь проверяет их существование и разделители;
 новая регрессия отвергает старый wrapper и проходит на исправленном. Старый failed не переименовывается в success.
 
+10.11 реальная ABI compile прошла; новый Pi дошёл до одного CAD start, но NETLOAD не загрузил DLL,
+RDDEPENDENCIES осталась неизвестной. Timeout/failed сохранён, остальные два DWG не запускались.
+В wrapper добавлен уже применяемый run_txtfix порядок загрузки: сохранить SECURELOAD, временно 0 только
+на NETLOAD, catch ошибки загрузки, восстановить/проверить исходное значение **до** RDDEPENDENCIES.
+Причина первого NETLOAD refusal по одной строке консоли не установлена; новый прогон — отдельная приёмка,
+не переименование failed. Failure JSON новых запусков сохраняет исходный результат owned helper.
+
 ## Зачем отдельный side database reader
 
 Нельзя доказывать полную dependency closure перечнем всех Fonts/Plotters: это envelope, не содержимое DWG.
