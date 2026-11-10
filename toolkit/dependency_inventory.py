@@ -4,6 +4,7 @@ import argparse
 import importlib.util
 import json
 import os
+import re
 from pathlib import Path, PureWindowsPath
 import stat
 import sys
@@ -52,6 +53,83 @@ def reference_path(parent, value, *, relative_only=False):
     return Path(value.replace('\\','/')) if win.drive else Path(parent)/value.replace('\\','/')
 
 
+def usage_evidence(native):
+    """Validate optional observations without inferring reachability, visibility or non-use."""
+    if 'usage' not in native:
+        return None  # Legacy accepted evidence retains its original table-only coverage.
+    usage = native['usage']
+    def invalid():
+        raise DependencyError('invalid_dependency_usage')
+    def handle(value):
+        return isinstance(value, str) and re.fullmatch(r'[1-9A-F][0-9A-F]*', value) is not None
+    if (not isinstance(usage, dict) or type(usage.get('schema_version')) is not int or usage['schema_version'] != 1
+            or usage.get('coverage') != 'bounded_local_definition_references' or usage.get('complete') is not False
+            or usage.get('traversal') != 'definitions_once_no_recursion' or type(usage.get('truncated')) is not bool
+            or type(usage.get('max_blocks')) is not int or usage['max_blocks'] != 2048
+            or type(usage.get('max_entities')) is not int or usage['max_entities'] != 20000
+            or not isinstance(usage.get('containers'), list) or len(usage['containers']) > 2048
+            or not isinstance(usage.get('observations'), list) or len(usage['observations']) > 20000
+            or not isinstance(usage.get('omissions'), list) or not usage['omissions']
+            or any(not isinstance(x, str) or not x for x in usage['omissions'])):
+        invalid()
+    containers = {}
+    for row in usage['containers']:
+        if (not isinstance(row, dict) or not handle(row.get('handle')) or row['handle'] in containers
+                or not isinstance(row.get('name'), str) or row.get('space') not in ('paper', 'model', 'block_definition')
+                or type(row.get('external')) is not bool
+                or row.get('scan') != ('external_skipped' if row['external'] else 'local_definition')
+                or (row['space'] == 'block_definition' and row.get('layout') is not None)
+                or (row['space'] != 'block_definition' and not isinstance(row.get('layout'), str))):
+            invalid()
+        containers[row['handle']] = row
+    tables = {}
+    for key in ('fonts', 'xrefs'):
+        records = native[key]
+        if any(not isinstance(row, dict) or not handle(row.get('record_handle')) for row in records):
+            invalid()
+        tables[key] = {row['record_handle']: row for row in records}
+        if len(tables[key]) != len(records):
+            invalid()
+    observations = {}
+    counts = {'text_style_reference': {}, 'block_reference': {}}
+    for row in usage['observations']:
+        if (not isinstance(row, dict) or not handle(row.get('entity_handle')) or row['entity_handle'] in observations
+                or not handle(row.get('container_handle')) or row['container_handle'] not in containers
+                or not isinstance(row.get('class_name'), str) or not row['class_name']
+                or row.get('kind') not in ('text_style_reference', 'block_reference', 'unsupported_entity')):
+            invalid()
+        container = containers[row['container_handle']]
+        if container['external']:
+            invalid()
+        parent = row.get('parent_insert_handle')
+        if ((parent is not None and not handle(parent))
+                or row.get('owner_handle') != (parent or row['container_handle'])):
+            invalid()
+        kind, target = row['kind'], row.get('target_handle')
+        if kind == 'unsupported_entity':
+            if target is not None:
+                invalid()
+        else:
+            if not handle(target) or (kind == 'text_style_reference' and target not in tables['fonts']):
+                invalid()
+            counts[kind][target] = counts[kind].get(target, 0) + 1
+        observations[row['entity_handle']] = row
+    for row in observations.values():
+        parent = row.get('parent_insert_handle')
+        if parent is not None:
+            insert = observations.get(parent, {})
+            if (insert.get('kind') != 'block_reference' or insert.get('parent_insert_handle') is not None
+                    or insert.get('container_handle') != row['container_handle']):
+                invalid()
+    evidence = []
+    for key, kind in (('fonts', 'text_style_reference'), ('xrefs', 'block_reference')):
+        for record_id, record in tables[key].items():
+            count = counts[kind].get(record_id, 0)
+            evidence.append({'table': key, 'record': dict(record), 'observation_count': count,
+                             'state': 'references_observed' if count else 'table_only_no_observation'})
+    return dict(usage, record_evidence=evidence)
+
+
 def build_inventory(probe, native, source_root, source_path, environment_roots, *, issue_only=False):
     if type(issue_only) is not bool or not isinstance(environment_roots,dict) or 'project' in environment_roots:
         raise DependencyError('invalid_environment_roots')
@@ -70,6 +148,7 @@ def build_inventory(probe, native, source_root, source_path, environment_roots, 
         or native.get('coverage')!='direct_tables_and_asset_dictionaries'
         or any(not isinstance(native.get(k),list) for k in ('xrefs','fonts','assets','layouts','omissions'))
         or not native['omissions']):raise DependencyError('invalid_partial_dependency_report')
+    usage=usage_evidence(native)
     sha=r.digest(source)
     if sha!=probe.get('source_sha256') or sha!=native.get('source_sha256'):raise DependencyError('dependency_source_changed')
     files=[{'path':source.relative_to(root).as_posix(),'sha256':sha,'role':'drawing'}];environment=[];questions=[];refs=[]
@@ -118,11 +197,14 @@ def build_inventory(probe, native, source_root, source_path, environment_roots, 
                 else:
                     row={'root':name,'path':path.relative_to(folder).as_posix(),'sha256':next(iter(hashes))}
                     if row not in environment:environment.append(row)
-    return {'schema_version':1,'status':'needs_input' if questions else 'observed_partial',
+    result = {'schema_version':1,'status':'needs_input' if questions else 'observed_partial',
         'coverage':'direct_tables_and_asset_dictionaries','execution_authorized':False,'dependency_complete':False,
         'resolution_scope':'issue_relative_only' if issue_only else 'explicit_roots',
         'files':files,'environment':environment,'questions':questions,'references':refs,'omissions':native['omissions'],
         'layouts':native['layouts'],'host_fontalt':native.get('host_fontalt'),'host_fontmap':native.get('host_fontmap')}
+    if usage is not None:
+        result['usage'] = usage
+    return result
 
 
 def main():

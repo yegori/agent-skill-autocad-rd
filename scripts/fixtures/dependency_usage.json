@@ -1,0 +1,42 @@
+{
+  "fonts": [
+    {"record_handle": "10", "name": "SyntheticObserved", "file": "test.shx", "big_font": ""},
+    {"record_handle": "11", "name": "SyntheticTableOnly", "file": "missing.shx", "big_font": ""}
+  ],
+  "xrefs": [{"record_handle": "20", "name": "SyntheticStamp", "path": "refs/stamp.dwg"}],
+  "usage": {
+    "schema_version": 1,
+    "coverage": "bounded_local_definition_references",
+    "complete": false,
+    "traversal": "definitions_once_no_recursion",
+    "truncated": false,
+    "max_blocks": 2048,
+    "max_entities": 20000,
+    "containers": [
+      {"handle": "A", "name": "*Model_Space", "space": "model", "layout": "Model", "scan": "local_definition", "external": false},
+      {"handle": "B", "name": "*Paper_Space", "space": "paper", "layout": "SyntheticSheet", "scan": "local_definition", "external": false},
+      {"handle": "C", "name": "SyntheticBlock", "space": "block_definition", "layout": null, "scan": "local_definition", "external": false},
+      {"handle": "D", "name": "SyntheticCycle", "space": "block_definition", "layout": null, "scan": "local_definition", "external": false},
+      {"handle": "20", "name": "SyntheticStamp", "space": "block_definition", "layout": null, "scan": "external_skipped", "external": true}
+    ],
+    "observations": [
+      {"kind": "text_style_reference", "entity_handle": "101", "class_name": "AcDbText", "container_handle": "A", "owner_handle": "A", "parent_insert_handle": null, "target_handle": "10"},
+      {"kind": "text_style_reference", "entity_handle": "102", "class_name": "AcDbMText", "container_handle": "B", "owner_handle": "B", "parent_insert_handle": null, "target_handle": "10"},
+      {"kind": "block_reference", "entity_handle": "103", "class_name": "AcDbBlockReference", "container_handle": "B", "owner_handle": "B", "parent_insert_handle": null, "target_handle": "C"},
+      {"kind": "text_style_reference", "entity_handle": "104", "class_name": "AcDbAttribute", "container_handle": "B", "owner_handle": "103", "parent_insert_handle": "103", "target_handle": "10"},
+      {"kind": "text_style_reference", "entity_handle": "105", "class_name": "AcDbAttributeDefinition", "container_handle": "C", "owner_handle": "C", "parent_insert_handle": null, "target_handle": "10"},
+      {"kind": "block_reference", "entity_handle": "106", "class_name": "AcDbBlockReference", "container_handle": "C", "owner_handle": "C", "parent_insert_handle": null, "target_handle": "D"},
+      {"kind": "block_reference", "entity_handle": "107", "class_name": "AcDbBlockReference", "container_handle": "D", "owner_handle": "D", "parent_insert_handle": null, "target_handle": "C"},
+      {"kind": "block_reference", "entity_handle": "108", "class_name": "AcDbBlockReference", "container_handle": "B", "owner_handle": "B", "parent_insert_handle": null, "target_handle": "20"},
+      {"kind": "unsupported_entity", "entity_handle": "109", "class_name": "AcDbProxyEntity", "container_handle": "A", "owner_handle": "A", "parent_insert_handle": null, "target_handle": null},
+      {"kind": "unsupported_entity", "entity_handle": "10A", "class_name": "AcDbAlignedDimension", "container_handle": "B", "owner_handle": "B", "parent_insert_handle": null, "target_handle": null},
+      {"kind": "unsupported_entity", "entity_handle": "10B", "class_name": "AcDbViewport", "container_handle": "B", "owner_handle": "B", "parent_insert_handle": null, "target_handle": null}
+    ],
+    "omissions": [
+      "insertion_paths_and_cycles_not_expanded", "block_reachability_and_dynamic_evaluation",
+      "visibility_layers_clipping_and_plot_use", "model_to_paper_viewports", "xref_contents_not_read",
+      "mtext_inline_fonts_and_attribute_mtext", "dimensions_shapes_and_other_entity_resources",
+      "proxy_spds_custom_resources", "actual_font_resolution_and_substitution"
+    ]
+  }
+}

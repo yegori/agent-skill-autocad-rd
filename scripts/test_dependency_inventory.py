@@ -1,4 +1,5 @@
 import contextlib
+import copy
 import io
 import hashlib
 import importlib.util
@@ -124,6 +125,101 @@ class DependencyTests(unittest.TestCase):
         with patch.object(p.sys,'argv',args),contextlib.redirect_stdout(io.StringIO()):self.assertEqual(p.main(),3)
         result=json.loads(output.read_text(encoding='utf-8'))
         self.assertEqual(result['resolution_scope'],'issue_relative_only');self.assertEqual(result['environment'],[])
+    def add_usage(self):
+        fixture = Path(__file__).with_name('fixtures') / 'dependency_usage.json'
+        self.native.update(json.loads(fixture.read_text(encoding='utf-8')))
+
+    def test_usage_style_xref_provenance_and_table_only_are_distinct(self):
+        self.add_usage()
+        result = self.issue()
+        usage = result['usage']
+        records = {r['record']['record_handle']: r for r in usage['record_evidence']}
+        self.assertEqual(records['10']['observation_count'], 4)
+        self.assertEqual(records['10']['state'], 'references_observed')
+        self.assertEqual(records['11']['state'], 'table_only_no_observation')
+        self.assertEqual(records['20']['observation_count'], 1)
+        self.assertEqual(usage['observations'], self.native['usage']['observations'])
+        self.assertEqual({r['space'] for r in usage['containers']}, {'model', 'paper', 'block_definition'})
+        self.assertFalse(result['dependency_complete']); self.assertFalse(usage['complete'])
+        self.assertFalse(result['execution_authorized']); self.assertEqual(result['environment'], [])
+
+    def test_usage_absence_never_removes_existing_questions(self):
+        self.add_usage()
+        observed = self.issue()
+        self.native['usage']['observations'] = []
+        no_observations = self.issue()
+        del self.native['usage']
+        legacy = self.issue()
+        self.assertEqual(observed['questions'], no_observations['questions'])
+        self.assertEqual(observed['questions'], legacy['questions'])
+        self.assertNotIn('usage', legacy)
+        self.assertEqual(legacy['coverage'], 'direct_tables_and_asset_dictionaries')
+        self.assertTrue(all(r['state'] == 'table_only_no_observation' for r in no_observations['usage']['record_evidence']))
+
+    def test_unknown_proxy_dimensions_viewports_preserved_not_resolved(self):
+        self.add_usage()
+        usage = self.issue()['usage']
+        unknown = [r for r in usage['observations'] if r['kind'] == 'unsupported_entity']
+        self.assertEqual([r['class_name'] for r in unknown], ['AcDbProxyEntity', 'AcDbAlignedDimension', 'AcDbViewport'])
+        self.assertTrue(all(r['target_handle'] is None for r in unknown))
+        self.assertIn('model_to_paper_viewports', usage['omissions'])
+        self.assertIn('proxy_spds_custom_resources', usage['omissions'])
+
+    def test_block_cycle_is_finite_definition_edges_not_recursive_usage(self):
+        self.add_usage()
+        usage = self.issue()['usage']
+        edges = {(r['container_handle'], r['target_handle']) for r in usage['observations'] if r['kind'] == 'block_reference'}
+        self.assertTrue({('C', 'D'), ('D', 'C')}.issubset(edges))
+        self.assertEqual(usage['traversal'], 'definitions_once_no_recursion')
+        self.assertIn('insertion_paths_and_cycles_not_expanded', usage['omissions'])
+        self.assertFalse(usage['complete'])
+        # A cap can leave target definitions unscanned. Keep the edge, never infer non-use.
+        self.native['usage']['truncated'] = True
+        self.native['usage']['containers'] = self.native['usage']['containers'][:2]
+        self.native['usage']['observations'] = self.native['usage']['observations'][:4]
+        result = self.issue()
+        self.assertTrue(result['usage']['truncated'])
+        self.assertEqual(result['usage']['observations'][2]['target_handle'], 'C')
+        self.assertEqual(len(result['questions']), 3)
+
+    def test_usage_invalid_provenance_completeness_and_limits_rejected(self):
+        self.add_usage()
+        original = copy.deepcopy(self.native)
+        mutations = [
+            lambda u: u.update(complete=True),
+            lambda u: u.update(truncated='false'),
+            lambda u: u.update(max_entities=20001),
+            lambda u: u.update(observations=[u['observations'][0]] * 20001),
+            lambda u: u.update(containers=[u['containers'][0]] * 2049),
+            lambda u: u['observations'][0].update(container_handle=[]),
+            lambda u: u.update(omissions=[]),
+            lambda u: u['observations'][0].update(target_handle='FF'),
+            lambda u: u['observations'][0].update(owner_handle='B'),
+            lambda u: u['observations'][0].update(container_handle='20', owner_handle='20'),
+            lambda u: u['observations'][3].update(parent_insert_handle='102', owner_handle='102'),
+            lambda u: u['observations'].append(dict(u['observations'][0])),
+            lambda u: u['containers'].append(dict(u['containers'][0])),
+            lambda u: u['observations'][8].update(target_handle='10'),
+        ]
+        for mutate in mutations:
+            self.native = copy.deepcopy(original)
+            mutate(self.native['usage'])
+            with self.assertRaises(p.DependencyError): self.issue()
+        self.native = copy.deepcopy(original)
+        del self.native['fonts'][0]['record_handle']
+        with self.assertRaises(p.DependencyError): self.issue()
+
+    def test_usage_does_not_relax_completion_or_source_hash(self):
+        self.add_usage()
+        self.test_source_drift_and_unproven_execution()
+
+    def test_usage_raw_hash_and_old_output_guards(self):
+        self.add_usage()
+        # Keep only the existing resolvable font so the shared CLI success fixture still returns 0.
+        self.native['fonts'] = self.native['fonts'][:1]
+        self.native['xrefs'] = []
+        self.test_cli_evidence_hash_marker_and_exclusive_output()
+
     def test_missing_coverage_cannot_be_promoted(self):
         self.native['omissions']=[]
         with self.assertRaises(p.DependencyError):self.build()

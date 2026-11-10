@@ -1,6 +1,69 @@
-# Direct dependencies через side Database — эксперимент, native acceptance НЕ пройдена
+# Direct dependencies через side Database — частичный read принят, usage candidate
 
 08–10.11.2026. Продолжение explicit staging (`16_staging_plot.md`). Не включать печать/общий consumer по этой заготовке.
+
+## Новое приращение: наблюдаемые ссылки объектов (10.11, native-unvalidated candidate)
+
+Новый reader **ещё не выполнялся в CAD**. Offline: ABI compile против AutoCAD 2024 SDK, 23 dependency
+unit tests (52 Python суммарно), 4 прежних fake-wrapper сценария; это не native acceptance и не deployment.
+Ранее принятые reads ниже остаются валидными для их прежнего table-only coverage; старые failed не переоценены.
+
+Аддитивные поля native JSON: `record_handle` у STYLE/xref records и необязательный `usage` (schema_version=1).
+Верхний `coverage=direct_tables_and_asset_dictionaries`, wrapper и общий job `result.json` **не меняются**.
+Converter принимает legacy без usage; при наличии проверяет структуру, handles/owners/parent inserts/лимиты,
+сохраняет observations и добавляет `usage.record_evidence` с исходной table record, числом ссылок и состоянием:
+
+- `references_observed`: наблюдалась ссылка объекта на record, **не доказательство видимости/нужности при печати**;
+- `table_only_no_observation`: запись таблицы без наблюдения в ограниченном scan, **не «не используется»**.
+
+Вопросы по ресурсам не удаляются ни при нуле observations, ни при достижении лимита; исходные name/path сохраняются.
+По-прежнему `dependency_complete=false`, `execution_authorized=false`; 56 inventory вопросов не означают 56 дефектов.
+CLI проверяет native SHA/marker и source SHA/completion до публикации inventory с usage; standalone build-функция
+не заменяет проверку сырых файлов. Handles имеют смысл только внутри исходного DWG с подтверждённым SHA.
+
+### Точный охват и ограничения
+
+- До **2048 BTR и 20000 entities, включая attributes**, по одному проходу локальных определений без recursion.
+  `truncated=true` означает прерванный по лимиту scan; `complete=false` **всегда**, даже если лимит не достигнут.
+  Это лимит usage, не ограничение прежнего table inventory; нет попытки автоматически повышать budget.
+- Native DBText/MText/AttributeDefinition/AttributeReference → `TextStyleId`; native BlockReference →
+  `BlockTableRecord`. Только точные managed types, другие/производные классы → `unsupported_entity`.
+  Attributes читаются отдельно из insert collection с `parent_insert_handle` и фактическим `owner_handle`.
+  Тексты/значения/геометрия не выгружаются и не меняются.
+- Каждая observation: entity handle, RX class, container handle, owner/parent insert, target record handle.
+  Containers различают `paper`, `model`, `block_definition`, сохраняют layout/name/handle. Ссылка в неиспользуемом
+  определении тоже observation, но reachability/число показанных вставок не устанавливаются.
+- Вложенные block edges сохраняются, **не раскрываются рекурсивно**: цикл конечен как список definition edges,
+  не утверждается ни его отсутствие, ни достижимость из paper. При лимите target definition может быть не прочитано.
+  External/dependent BTR отмечаются `external_skipped`; их entities не читаются, ResolveXrefs/FindFile не вызываются.
+- Proxy/СПДС, dimensions, shapes, viewport и другие неподдержанные entities остаются явными unknown rows;
+  material/asset usage, MText inline fonts, multiline attribute content, dynamic evaluation, layer visibility,
+  clipping и actual font substitution не исследованы. Определения assets по-прежнему лишь dictionary inventory.
+  **Model не печатная цель, но может влиять на paper через viewport**: никаких выводов о его ненужности.
+- Source только side Database на отдельном safe host; ошибки API fail closed, не скрываются как empty usage.
+  Все transactions/DB закрыты до SHA, JSON/marker и managed hold. Early exit даже 0, timeout, SHA drift по-прежнему отказ.
+
+Synthetic fixture `scripts/fixtures/dependency_usage.json`: обычный текст/атрибуты, paper/model/blocks,
+неподдержанные proxy/dimension/viewport, xref edge, cycle и table-only STYLE. Tests проверяют сохранение вопросов,
+частичный capped graph, legacy, неверный provenance/coverage, completion/source/raw SHA и exclusive output.
+Это synthetic converter tests, **не исполнение C# scan на реальной базе**.
+
+### Заявка координатору на bounded native acceptance (не выполнена)
+
+После своего live preflight/допуска — до **трёх последовательных CAD-шагов**, один source DWG на wrapper,
+новые evidence directories, отдельный проверенный host; общий guard/owned Job и прежние тайм-ауты без ослабления:
+
+1. Штамп либо следующий уже выбранный лист: проверить native ABI/runtime, paper/model/block provenance,
+   STYLE links/attribute owners и явные unknown; никакого открытия xrefs ради обхода.
+2. Следующий выбранный лист со ссылкой на штамп: сопоставить block-reference target handle с xref record и
+   точным relative issue path; это ещё не соответствие ожидаемому штампу/не полная проверка его вида.
+3. Только после успешной проверки первых двух — выбранный сложный лист (либо ранее принятый большой source):
+   оценить cap/truncated/unknown, сохранить VLA warnings и проверить отсутствие раннего выхода.
+
+На каждом шаге: source/snapshot/protected/config SHA до/после, closed metadata/managed hold/live root/cleanup,
+raw SHA и независимый strict `--issue-only` converter; environment bindings=0. Не продолжать после native failure,
+не считать needs_input ресурсов failed, не сравнивать старый failed raw как accepted. Никакой печати/правок/подмен.
+Реальные пути и evidence — только private note координатора; этот план не меняет pause/production authorization.
 
 ## Последняя native приёмка — большой source прочитан (10.11)
 
@@ -89,8 +152,8 @@ reader/DELAY объединён в progn, чтобы отказ проверки
 
 - `toolkit/dependencies/DependencyProbe.cs`: нативная команда RDDEPENDENCIES внутри accoreconsole;
   block-table xref paths/status, STYLE font filenames/big fonts/typeface, layout paper/device/style sheet,
-  Image/PDF/DWF/DGN definition dictionaries. Source SHA до/после чтения. Лишь первый уровень/таблицы,
-  не использованные glyphs/реальный GDI font substitution/полный graph/СПДС custom resources/material textures.
+  Image/PDF/DWF/DGN definition dictionaries. Source SHA до/после чтения. Новое optional usage — ограниченные
+  локальные object references (candidate выше), не glyphs/реальный GDI font substitution/полный graph/СПДС resources.
 - `toolkit/inspect_dependencies.ps1`: ровно один CAD-start на safe host copy, fresh EvidenceDir, SDK compile,
   source/host/copy SHA, request/raw/probe evidence; native command пишет JSON, закрывает его, только потом ALLDONE.
   После marker native команда удерживает root managed sleep; нет возврата в command-ended Lisp/DELAY.
@@ -125,7 +188,7 @@ python -I toolkit/dependency_inventory.py <evidence> --source-root <selected-sna
 не автоматическая замена. PowerShell wrapper отказывает для reparse source/host/output и не-ASCII EvidenceDir
 до native старта; полное имя source copy сохраняется. Fake-wrapper test не загружает Autodesk.
 
-16 unit tests без CAD (включая 6 issue-only cases) + `scripts/test_dependency_probe.ps1` (fake compiler/process, 4 сценария): partial/no auth, parent escape without file read, nested refs, assets/missing,
+23 unit tests без CAD (включая 6 issue-only и 7 usage cases) + `scripts/test_dependency_probe.ps1` (fake compiler/process, 4 сценария): partial/no auth, parent escape without file read, nested refs, assets/missing,
 missing/ambiguous/registry fonts, unproven completion/source drift, raw-evidence hash/exclusive output,
 reserved root/omissions. `check_package.py` — 26 Python sources; local Claude plugin validation passed
 с прежним missing-version warning. ABI C# успешно скомпилирован против реальных AutoCAD 2024 DLL на RYZENDT,
