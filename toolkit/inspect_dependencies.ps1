@@ -32,7 +32,10 @@ $request = Join-Path $evidence 'request.json';@{source=$copy;report=$raw;marker=
 $previous = $env:RDCI_DEP_REQUEST
 try {
   $csc = Join-Path $env:WINDIR 'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
-  & $csc /nologo /target:library "/out:$dll" "/r:$AcadDir/AcDbMgd.dll" "/r:$AcadDir/AcMgd.dll" "/r:$AcadDir/AcCoreMgd.dll" /r:System.Web.Extensions.dll "$PSScriptRoot/dependencies/DependencyProbe.cs" 2>&1 | Set-Content -LiteralPath (Join-Path $evidence 'build.txt') -Encoding utf8
+  # Framework csc normalizes mixed-slash source arguments incorrectly; use native paths throughout.
+  $code = Join-Path $PSScriptRoot 'dependencies/DependencyProbe.cs'
+  $references = @('AcDbMgd.dll','AcMgd.dll','AcCoreMgd.dll') | ForEach-Object { '/r:' + (Join-Path $AcadDir $_) }
+  & $csc /nologo /target:library "/out:$dll" @references /r:System.Web.Extensions.dll $code 2>&1 | Set-Content -LiteralPath (Join-Path $evidence 'build.txt') -Encoding utf8
   if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $dll)) { throw 'dependency_build_failed' }
   $env:RDCI_DEP_REQUEST = $request
   $lisp = $LispHead + "`n(command `"_.NETLOAD`" `"$($dll.Replace('\','/'))`")`n(command `"RDDEPENDENCIES`")`n(while T (command `"_.DELAY`" 1000))`n"

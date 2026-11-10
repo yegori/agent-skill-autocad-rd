@@ -1,5 +1,13 @@
 # Грабли: AutoCAD 2024 / accoreconsole / СПДС / печать
 
+## PowerShell / Framework csc
+
+- Имена переменных регистронезависимы: `$host` конфликтует с read-only automatic `$Host`; для пути нужен `$hostSource`.
+- Старый Framework `csc.exe` неверно нормализует смешанные разделители в source argument вида
+  `"$PSScriptRoot/dependencies/Reader.cs"`: CS1504 указывает на ошибочно укороченный путь. Передавать source,
+  assembly references и `/out` через `Join-Path`/готовые native Windows paths. Это проверять реальной ABI compile
+  до CAD; fake compiler должен проверять существование source/references и отсутствие forward slash в этих путях.
+
 ## accoreconsole
 
 - Запускать **из PowerShell**. Git Bash портит ключи `/i`, `/s`.

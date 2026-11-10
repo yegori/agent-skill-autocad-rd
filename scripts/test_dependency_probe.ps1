@@ -3,12 +3,24 @@ $ErrorActionPreference = 'Stop'
 $package = Split-Path $PSScriptRoot
 $root = Join-Path ([IO.Path]::GetTempPath()) ('dependency-test-' + [guid]::NewGuid().ToString('N'))
 $oldWindir, $oldRequest, $oldCount, $oldMode = $env:WINDIR, $env:RDCI_DEP_REQUEST, $env:RDCI_FAKE_COUNT, $env:RDCI_FAKE_MODE
-New-Item -ItemType Directory -Path "$root/toolkit/spds_text", "$root/input", "$root/windows/Microsoft.NET/Framework64/v4.0.30319" | Out-Null
+New-Item -ItemType Directory -Path "$root/toolkit/spds_text", "$root/toolkit/dependencies", "$root/toolkit/fake-acad", "$root/input", "$root/windows/Microsoft.NET/Framework64/v4.0.30319" | Out-Null
 try {
     $compiler = @'
 using System; using System.IO;
 class FakeCompiler {
  static int Main(string[] args) {
+  bool source=false;
+  foreach(string arg in args) {
+   if(arg.EndsWith(".cs")) {
+    if(arg.Contains("/") || !File.Exists(arg)) return 31;
+    source=true;
+   }
+   if(arg.StartsWith("/r:") && arg != "/r:System.Web.Extensions.dll") {
+    string path=arg.Substring(3);
+    if(path.Contains("/") || !File.Exists(path)) return 32;
+   }
+  }
+  if(!source) return 33;
   foreach(string arg in args) if(arg.StartsWith("/out:")) File.WriteAllText(arg.Substring(5),"fake dll");
   return 0;
  }
@@ -20,8 +32,12 @@ class FakeCompiler {
     & (Join-Path $oldWindir 'Microsoft.NET/Framework64/v4.0.30319/csc.exe') /nologo /target:exe "/out:$fakeCompiler" $fakeSource
     if ($LASTEXITCODE -ne 0) { throw 'fake_compiler_build_failed' }
     Copy-Item -LiteralPath "$package/toolkit/inspect_dependencies.ps1" -Destination "$root/toolkit/inspect_dependencies.ps1"
+    [IO.File]::WriteAllText((Join-Path $root 'toolkit/dependencies/DependencyProbe.cs'), '// fake only')
+    foreach($name in @('AcDbMgd.dll','AcMgd.dll','AcCoreMgd.dll')) {
+        [IO.File]::WriteAllText((Join-Path $root ('toolkit/fake-acad/'+$name)), 'fake assembly')
+    }
     [IO.File]::WriteAllText("$root/toolkit/common.ps1", @'
-$AcadDir='fake';$AccCore='fake-never-launched';$LispHead=''
+$AcadDir=Join-Path $PSScriptRoot 'fake-acad';$AccCore='fake-never-launched';$LispHead=''
 function Write-Scr([string]$Path,[string]$Text) { [IO.File]::WriteAllText($Path,$Text) }
 '@)
     [IO.File]::WriteAllText("$root/toolkit/spds_text/owned_acad.ps1", @'

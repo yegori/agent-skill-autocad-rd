@@ -10,6 +10,11 @@ name/path; такой файл не хешируется/не добавляет
 и dependency_complete=false сохраняются. Host по-прежнему отдельный проверенный технический тестовый файл,
 не проектная зависимость и не разрешение брать шрифты/подложки из других выдач.
 
+Новая genuine Pi попытка 09.11 штатно failed до CAD: Framework csc укоротил mixed-slash source path (CS1504).
+Нет native metadata/closure; outer Job empty, pause/idle возвращены, protected inputs/configs/Plotters прежние.
+Исправление — native `Join-Path` source и references, fake compiler теперь проверяет их существование и разделители;
+новая регрессия отвергает старый wrapper и проходит на исправленном. Старый failed не переименовывается в success.
+
 ## Зачем отдельный side database reader
 
 Нельзя доказывать полную dependency closure перечнем всех Fonts/Plotters: это envelope, не содержимое DWG.
