@@ -20,6 +20,22 @@ Outer Job empty, pause/idle/ready восстановлены; 30 selected source
 Проектные пути/UUID/шрифты/изображения — private locator `issue_dependency_acceptance`, не Git.
 Полная native приёмка reader, nested/actual resources closure, остальные DWG и печать остаются впереди.
 
+## Разбор раннего выхода (10.11, до нового native теста)
+
+В исходном console output большого source после загрузки Civil OE есть `VLA-OBJECT nil` и запрет
+`(command)` из `*error*` без `*push-error-using-command*`. Это конкретная ошибка AutoLISP после записи metadata,
+а не доказанный access violation/повреждённый DWG. Исходный root exit code не был сохранён; отсутствие
+Application Error/WER/.NET events в ограниченном временном окне его не восстанавливает.
+
+Узкое изменение: после закрытия side DB, проверки source SHA и закрытых JSON/marker команда **не возвращается
+в AutoLISP**, а остаётся в managed sleep до остановки собственного Job. В SCR больше нет DELAY loop.
+Использовать только bounded wrapper, не вручную/интерактивно и не для print/SaveAs. Marker + ранний exit,
+даже exit=0, по-прежнему failed. Новые native reports указывают `completion_hold=inside_managed_command`.
+Owned helper теперь получает nullable unsigned `RootExitCodeBeforeStop` по исходному held handle до Stop;
+живой root → null, собственный termination code не выдается за natural exit. Старое evidence не дополнено задним числом.
+45 Python tests, fake-wrapper 4 сценария и native fake-process tests (exit=17/NTSTATUS bits/sentinel) проходят;
+это ещё не реальный тест исправления на большом DWG.
+
 ## Подготовка и сохранённые отказы
 
 09.11 старый service-инцидент закрыт отдельным протоколом rd-ci docs/32, новый files-only Pi completed.
@@ -63,6 +79,7 @@ reader/DELAY объединён в progn, чтобы отказ проверки
   не использованные glyphs/реальный GDI font substitution/полный graph/СПДС custom resources/material textures.
 - `toolkit/inspect_dependencies.ps1`: ровно один CAD-start на safe host copy, fresh EvidenceDir, SDK compile,
   source/host/copy SHA, request/raw/probe evidence; native command пишет JSON, закрывает его, только потом ALLDONE.
+  После marker native команда удерживает root managed sleep; нет возврата в command-ended Lisp/DELAY.
   Lisp не пишет marker после команды: NETLOAD/command error не проскочит к фиктивному успешному маркеру.
   Root жив до cleanup private Job, mode=owned_job_after_side_database_read, exit_code=null, timeout<=300.
   DLL/SCR/host paths должны быть короткими ASCII (NETLOAD ограничение); managed source copy может сохранить имя.
@@ -76,7 +93,7 @@ reader/DELAY объединён в progn, чтобы отказ проверки
   execution_authorized=false, omissions сохранены. observed_partial не approval/reuse/полная проверка.
   Нет automatic stage/печати, перепривязки, копирования шрифтов в Windows или изменения PC3/PMP.
 
-Пример будущего контролируемого вызова **только после снятия operational blocker согласованной процедурой**:
+Пример контролируемого вызова после live preflight и отдельного resume в разрешённом scope (актуальный статус — handoff rd-ci):
 
 ```text
 pwsh -NoProfile -File toolkit/inspect_dependencies.ps1 -SourceDwg <copy.dwg> -HostDwg <approved-safe-host.dwg> -EvidenceDir <new-ascii-dir> -TimeoutSec 120
@@ -94,7 +111,7 @@ python -I toolkit/dependency_inventory.py <evidence> --source-root <selected-sna
 не автоматическая замена. PowerShell wrapper отказывает для reparse source/host/output и не-ASCII EvidenceDir
 до native старта; полное имя source copy сохраняется. Fake-wrapper test не загружает Autodesk.
 
-16 unit tests без CAD (включая 6 issue-only cases) + `scripts/test_dependency_probe.ps1` (fake compiler/process, 3 сценария): partial/no auth, parent escape without file read, nested refs, assets/missing,
+16 unit tests без CAD (включая 6 issue-only cases) + `scripts/test_dependency_probe.ps1` (fake compiler/process, 4 сценария): partial/no auth, parent escape without file read, nested refs, assets/missing,
 missing/ambiguous/registry fonts, unproven completion/source drift, raw-evidence hash/exclusive output,
 reserved root/omissions. `check_package.py` — 26 Python sources; local Claude plugin validation passed
 с прежним missing-version warning. ABI C# успешно скомпилирован против реальных AutoCAD 2024 DLL на RYZENDT,

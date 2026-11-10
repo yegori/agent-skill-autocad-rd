@@ -49,13 +49,13 @@ function Invoke-OwnedTxtfixProcess {
  if([IO.File]::ReadAllText($Arguments[1]) -ne 'safe host') { throw 'source_used_as_host' }
  $lisp=[IO.File]::ReadAllText($Arguments[3])
  $positions=@('(setq rd_dep_sl (getvar "SECURELOAD"))','(setvar "SECURELOAD" 0)',"(vl-catch-all-apply '(lambda () (command",'(setvar "SECURELOAD" rd_dep_sl)','(if (and (not (vl-catch-all-error-p rd_dep_load)) (= (getvar "SECURELOAD") rd_dep_sl))','(command "RDDEPENDENCIES")') | ForEach-Object { $lisp.IndexOf($_) }
- if($lisp.Contains("(vl-catch-all-apply 'command") -or -not $lisp.Contains('(progn')){throw 'special_form_or_fallthrough'}
+ if($lisp.Contains("(vl-catch-all-apply 'command") -or -not $lisp.Contains('(progn') -or $lisp.Contains('DELAY')){throw 'special_form_or_lisp_wait'}
  $previous=-1
  foreach($position in $positions){if($position -le $previous){throw 'load_policy_not_restored_before_reader'};$previous=$position}
  @{status='observed_partial';source_sha256=(Get-FileHash -LiteralPath $request.source).Hash.ToLowerInvariant();execution_authorized=$false;
-   xrefs=@();fonts=@();assets=@();layouts=@(@{name='test'})} | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $request.report
+   completion_hold='inside_managed_command';xrefs=@();fonts=@();assets=@();layouts=@(@{name='test'})} | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $request.report
  [IO.File]::WriteAllText($Log,"ALLDONE`n")
- [pscustomobject]@{AllDone=$true;TimedOut=($env:RDCI_FAKE_MODE -eq 'timeout');RootExitedBeforeStop=$false;Terminated=$true;ElapsedSeconds=0.1}
+ [pscustomobject]@{AllDone=$true;TimedOut=($env:RDCI_FAKE_MODE -eq 'timeout');RootExitedBeforeStop=($env:RDCI_FAKE_MODE -eq 'early');Terminated=($env:RDCI_FAKE_MODE -ne 'early');RootExitCodeBeforeStop=$(if($env:RDCI_FAKE_MODE -eq 'early'){0}else{$null});ElapsedSeconds=0.1}
 }
 '@)
     $env:WINDIR="$root/windows";$env:RDCI_DEP_REQUEST='preserve-me';$env:RDCI_FAKE_COUNT="$root/count.txt"
@@ -79,6 +79,12 @@ function Invoke-OwnedTxtfixProcess {
     if(Test-Path -LiteralPath "$root/timed/probe.json"){throw 'timeout_published_success'}
     if(-not (Test-Path -LiteralPath "$root/timed/failure.json") -or $env:RDCI_DEP_REQUEST -ne 'preserve-me'){throw 'failure_evidence_or_restore_missing'}
     'OK: completion marker does not hide timeout; failure evidence/environment preserved'
+    $env:RDCI_FAKE_MODE='early'
+    try { & "$root/toolkit/inspect_dependencies.ps1" @inputs -EvidenceDir "$root/early"; throw 'early_exit_accepted' }
+    catch { if($_.Exception.Message -ne 'dependency_native_incomplete'){throw} }
+    $failure=Get-Content -LiteralPath "$root/early/failure.json" -Raw | ConvertFrom-Json
+    if((Test-Path -LiteralPath "$root/early/probe.json") -or -not $failure.owned.RootExitedBeforeStop -or $failure.owned.RootExitCodeBeforeStop -ne 0){throw 'early_exit_evidence_lost'}
+    'OK: ALLDONE plus natural exit=0 still fails; original exit observation retained'
 } finally {
     $env:WINDIR=$oldWindir;$env:RDCI_DEP_REQUEST=$oldRequest;$env:RDCI_FAKE_COUNT=$oldCount;$env:RDCI_FAKE_MODE=$oldMode
     Remove-Item -LiteralPath $root -Recurse -Force

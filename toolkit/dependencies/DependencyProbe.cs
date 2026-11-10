@@ -59,10 +59,15 @@ public class RdDependencyProbe {
         }
         if (before != Hash(source)) throw new InvalidOperationException("dependency_source_changed");
         var report = new { schema_version = 1, kind = "side_database_dependencies", status = "observed_partial", source_sha256 = before,
-            coverage = "direct_tables_and_asset_dictionaries", execution_authorized = false, xrefs = xrefs, fonts = fonts, layouts = layouts, assets = assets,
+            coverage = "direct_tables_and_asset_dictionaries", execution_authorized = false, completion_hold = "inside_managed_command",
+            xrefs = xrefs, fonts = fonts, layouts = layouts, assets = assets,
             omissions = new [] { "nested_xref_contents", "actual_font_resolution_and_substitution", "material_textures", "proxy_custom_resources", "plot_device_pmp_closure" },
             host_fontalt = Convert.ToString(AcApplication.GetSystemVariable("FONTALT")), host_fontmap = Convert.ToString(AcApplication.GetSystemVariable("FONTMAP")) };
         WriteNew(request["report"], json.Serialize(report));
         WriteNew(request["marker"], "ALLDONE\n"); // Only native command success after closed source/report, never Lisp fallthrough.
+        // Do not return into command-ended Lisp/DELAY reactors in Core Console. The source DB and report
+        // are already closed; the bounded wrapper stops this private Job after verifying the marker.
+        // Not for interactive use, plotting or SaveAs. A marker followed by early exit still fails.
+        while (true) System.Threading.Thread.Sleep(1000);
     }
 }

@@ -15,6 +15,7 @@ function Invoke-OwnedTxtfixProcess {
     $timedOut = $false
     $terminated = $false
     $rootExitedBeforeStop = $null
+    $rootExitCodeBeforeStop = $null
     $clock = [Diagnostics.Stopwatch]::StartNew()
     try {
         $process = [AutocadRd.OwnedCadProcess]::Start($FilePath, $Arguments)
@@ -34,10 +35,15 @@ function Invoke-OwnedTxtfixProcess {
         }
     } finally {
         if ($process) {
-            try { $rootExitedBeforeStop = $process.HasExited; $terminated = $process.Stop() }
+            try {
+                try {
+                    $rootExitedBeforeStop = $process.HasExited
+                    if ($rootExitedBeforeStop) { $rootExitCodeBeforeStop = $process.ExitCode }
+                } finally { $terminated = $process.Stop() }
+            }
             finally { $process.Dispose() }
         }
     }
     [pscustomobject]@{ AllDone = $allDone; TimedOut = $timedOut; Terminated = $terminated; RootExitedBeforeStop = $rootExitedBeforeStop;
-                       ElapsedSeconds = $clock.Elapsed.TotalSeconds }
+                       RootExitCodeBeforeStop = $rootExitCodeBeforeStop; ElapsedSeconds = $clock.Elapsed.TotalSeconds }
 }

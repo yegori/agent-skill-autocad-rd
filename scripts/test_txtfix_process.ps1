@@ -24,6 +24,7 @@ class Fake {
   }
   if (mode=="done") File.WriteAllText(log,"ALLDONE\n");
   if (mode=="exit") return 17;
+  if (mode=="statusbits") return unchecked((int)0xC0000005); // Simulated status, not a real crash.
   if (mode=="fast") { File.WriteAllText(log,"ALLDONE\n"); return 0; }
   Thread.Sleep(60000); return 0;
  }
@@ -37,7 +38,7 @@ class Fake {
     $sentinel = [Diagnostics.Process]::Start($start)
     $heldSentinel = $sentinel.SafeHandle
     $done = Invoke-OwnedTxtfixProcess -FilePath $exe -Arguments @('done', (Join-Path $root 'done.log')) -Log (Join-Path $root 'done.log') -TimeoutSec 5
-    if (-not $done.AllDone -or $done.TimedOut -or -not $done.Terminated) { throw 'all_done_cleanup_failed' }
+    if (-not $done.AllDone -or $done.TimedOut -or -not $done.Terminated -or $done.RootExitedBeforeStop -or $null -ne $done.RootExitCodeBeforeStop) { throw 'all_done_cleanup_failed' }
     'OK: ALLDONE process stopped through private Job; paths with spaces preserved'
     foreach ($mode in 'child','orphan') {
         $log = Join-Path $root ($mode + '.log')
@@ -60,8 +61,10 @@ class Fake {
     if ($timed.AllDone -or -not $timed.TimedOut -or -not $timed.Terminated -or $timed.ElapsedSeconds -gt 12) { throw 'timeout_cleanup_failed' }
     'OK: bounded timeout/cleanup without ALLDONE'
     $exited = Invoke-OwnedTxtfixProcess -FilePath $exe -Arguments @('exit', (Join-Path $root 'exit.log')) -Log (Join-Path $root 'exit.log') -TimeoutSec 5
-    if ($exited.AllDone -or $exited.TimedOut -or $exited.Terminated) { throw 'natural_exit_handling_failed' }
-    'OK: early natural exit is incomplete, not killed or claimed successful'
+    if ($exited.AllDone -or $exited.TimedOut -or $exited.Terminated -or -not $exited.RootExitedBeforeStop -or $exited.RootExitCodeBeforeStop -ne 17) { throw 'natural_exit_handling_failed' }
+    $bits = Invoke-OwnedTxtfixProcess -FilePath $exe -Arguments @('statusbits', (Join-Path $root 'bits.log')) -Log (Join-Path $root 'bits.log') -TimeoutSec 5
+    if ($bits.RootExitCodeBeforeStop -ne [uint32]3221225477 -or $bits.Terminated -or $bits.AllDone) { throw 'exit_status_bits_lost' }
+    'OK: early natural exit=17 and simulated NTSTATUS bits preserved from held handle; never promoted to success'
     foreach ($n in 1..10) {
         $log = Join-Path $root "fast-$n.log"
         $fast = Invoke-OwnedTxtfixProcess -FilePath $exe -Arguments @('fast', $log) -Log $log -TimeoutSec 5

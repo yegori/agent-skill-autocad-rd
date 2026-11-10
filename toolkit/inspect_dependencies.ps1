@@ -49,17 +49,16 @@ try {
   (setq rd_dep_load (vl-catch-all-apply '(lambda () (command "_.NETLOAD" rd_dep_dll)) nil))
   (setvar "SECURELOAD" rd_dep_sl)
   (if (and (not (vl-catch-all-error-p rd_dep_load)) (= (getvar "SECURELOAD") rd_dep_sl))
-    (command "RDDEPENDENCIES"))
-  (while T (command "_.DELAY" 1000)))
+    (command "RDDEPENDENCIES")))
 "@
   $scr = Join-Path $evidence 'probe.scr';Write-Scr $scr $lisp
   $owned = Invoke-OwnedTxtfixProcess -FilePath $AccCore -Arguments @('/i',$hostCopy,'/s',$scr,'/l','ru-RU') -Log $marker -TimeoutSec $TimeoutSec
   if (-not $owned.AllDone -or $owned.TimedOut -or $owned.RootExitedBeforeStop -ne $false -or -not $owned.Terminated) { throw 'dependency_native_incomplete' }
   if ((Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash.ToLowerInvariant() -ne $sourceSha -or (Get-FileHash -LiteralPath $copy -Algorithm SHA256).Hash.ToLowerInvariant() -ne $sourceSha -or (Get-FileHash -LiteralPath $hostSource -Algorithm SHA256).Hash.ToLowerInvariant() -ne $hostSha) { throw 'dependency_source_or_host_changed' }
   $native = Get-Content -LiteralPath $raw -Raw -Encoding utf8 | ConvertFrom-Json
-  if ($native.status -ne 'observed_partial' -or $native.source_sha256 -ne $sourceSha -or $native.execution_authorized -ne $false) { throw 'dependency_native_report_invalid' }
+  if ($native.status -ne 'observed_partial' -or $native.source_sha256 -ne $sourceSha -or $native.execution_authorized -ne $false -or $native.completion_hold -ne 'inside_managed_command') { throw 'dependency_native_report_invalid' }
   $report = @{ schema_version=1;kind='dependency_probe';status='observed_partial';source_sha256=$sourceSha;host_sha256=$hostSha;
-               completion_mode='owned_job_after_side_database_read';exit_code=$null;root_alive_before_stop=$true;cleanup_verified=$true;
+               completion_mode='owned_job_after_side_database_read';native_hold=$native.completion_hold;exit_code=$null;root_alive_before_stop=$true;cleanup_verified=$true;
                elapsed_seconds=$owned.ElapsedSeconds;cad_starts=1;native_sha256=(Get-FileHash -LiteralPath $raw -Algorithm SHA256).Hash.ToLowerInvariant();
                execution_authorized=$false;coverage='direct_tables_and_asset_dictionaries' }
   $report | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $evidence 'probe.json') -Encoding utf8

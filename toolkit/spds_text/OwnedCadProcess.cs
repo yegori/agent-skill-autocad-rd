@@ -51,6 +51,7 @@ namespace AutocadRd {
   [DllImport("kernel32.dll", SetLastError=true)] static extern bool TerminateJobObject(IntPtr job, uint code);
   [DllImport("kernel32.dll", SetLastError=true)] static extern uint WaitForSingleObject(IntPtr handle, uint milliseconds);
   [DllImport("kernel32.dll", SetLastError=true)] static extern bool CloseHandle(IntPtr handle);
+  [DllImport("kernel32.dll", SetLastError=true)] static extern bool GetExitCodeProcess(IntPtr handle, out uint code);
 
   static void Check(bool ok, string code) {
    if (!ok) throw new Win32Exception(Marshal.GetLastWin32Error(), code);
@@ -106,6 +107,14 @@ namespace AutocadRd {
     if (value == 0) return true;
     if (value == 258) return false;
     throw new Win32Exception(Marshal.GetLastWin32Error(), "owned_process_wait_failed");
+   }
+  }
+  // Read only from the original held handle, before owner termination. Null while alive; keep NTSTATUS bits.
+  public uint? ExitCode {
+   get {
+    if (!HasExited) return null;
+    uint code; Check(GetExitCodeProcess(process, out code), "owned_process_exit_code_failed");
+    return code;
    }
   }
   public void Wait(int milliseconds) {
