@@ -42,14 +42,15 @@ try {
   # Same temporary NETLOAD policy as run_txtfix; restore before any source database read.
   $lisp = $LispHead + @"
 
-(setq rd_dep_sl (getvar "SECURELOAD"))
-(setvar "SECURELOAD" 0)
-(setq rd_dep_dll "$($dll.Replace('\','/'))")
-(setq rd_dep_load (vl-catch-all-apply 'command (list "_.NETLOAD" rd_dep_dll)))
-(setvar "SECURELOAD" rd_dep_sl)
-(if (or (vl-catch-all-error-p rd_dep_load) (/= (getvar "SECURELOAD") rd_dep_sl)) (exit))
-(command "RDDEPENDENCIES")
-(while T (command "_.DELAY" 1000))
+(progn
+  (setq rd_dep_sl (getvar "SECURELOAD"))
+  (setq rd_dep_dll "$($dll.Replace('\','/'))")
+  (setvar "SECURELOAD" 0)
+  (setq rd_dep_load (vl-catch-all-apply '(lambda () (command "_.NETLOAD" rd_dep_dll)) nil))
+  (setvar "SECURELOAD" rd_dep_sl)
+  (if (and (not (vl-catch-all-error-p rd_dep_load)) (= (getvar "SECURELOAD") rd_dep_sl))
+    (command "RDDEPENDENCIES"))
+  (while T (command "_.DELAY" 1000)))
 "@
   $scr = Join-Path $evidence 'probe.scr';Write-Scr $scr $lisp
   $owned = Invoke-OwnedTxtfixProcess -FilePath $AccCore -Arguments @('/i',$hostCopy,'/s',$scr,'/l','ru-RU') -Log $marker -TimeoutSec $TimeoutSec

@@ -16,11 +16,16 @@ name/path; такой файл не хешируется/не добавляет
 новая регрессия отвергает старый wrapper и проходит на исправленном. Старый failed не переименовывается в success.
 
 10.11 реальная ABI compile прошла; новый Pi дошёл до одного CAD start, но NETLOAD не загрузил DLL,
-RDDEPENDENCIES осталась неизвестной. Timeout/failed сохранён, остальные два DWG не запускались.
+RDDEPENDENCIES осталась неизвестной. Failed сохранён, остальные два DWG не запускались.
 В wrapper добавлен уже применяемый run_txtfix порядок загрузки: сохранить SECURELOAD, временно 0 только
 на NETLOAD, catch ошибки загрузки, восстановить/проверить исходное значение **до** RDDEPENDENCIES.
 Причина первого NETLOAD refusal по одной строке консоли не установлена; новый прогон — отдельная приёмка,
 не переименование failed. Failure JSON новых запусков сохраняет исходный результат owned helper.
+Следующий native прогон установил конкретный дефект catch: COMMAND — special form, прямой
+`vl-catch-all-apply 'command` дал «неверная порядковая функция: COMMAND»; root exited до marker (~1.44 s),
+SECURELOAD восстановлен до 1, native metadata отсутствуют. Исправлено через lambda; весь load/restore/условный
+reader/DELAY объединён в progn, чтобы отказ проверки не продолжал следующие отдельные SCR forms.
+Это ещё один сохранённый failed, не успех reader.
 
 ## Зачем отдельный side database reader
 

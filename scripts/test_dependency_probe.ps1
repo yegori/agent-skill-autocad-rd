@@ -48,7 +48,8 @@ function Invoke-OwnedTxtfixProcess {
  if($Arguments[0] -ne '/i' -or [IO.Path]::GetFileName($Arguments[1]) -ne 'host.dwg') { throw 'wrong_host' }
  if([IO.File]::ReadAllText($Arguments[1]) -ne 'safe host') { throw 'source_used_as_host' }
  $lisp=[IO.File]::ReadAllText($Arguments[3])
- $positions=@('(setq rd_dep_sl (getvar "SECURELOAD"))','(setvar "SECURELOAD" 0)',"(vl-catch-all-apply 'command",'(setvar "SECURELOAD" rd_dep_sl)','(/= (getvar "SECURELOAD") rd_dep_sl)','(command "RDDEPENDENCIES")') | ForEach-Object { $lisp.IndexOf($_) }
+ $positions=@('(setq rd_dep_sl (getvar "SECURELOAD"))','(setvar "SECURELOAD" 0)',"(vl-catch-all-apply '(lambda () (command",'(setvar "SECURELOAD" rd_dep_sl)','(if (and (not (vl-catch-all-error-p rd_dep_load)) (= (getvar "SECURELOAD") rd_dep_sl))','(command "RDDEPENDENCIES")') | ForEach-Object { $lisp.IndexOf($_) }
+ if($lisp.Contains("(vl-catch-all-apply 'command") -or -not $lisp.Contains('(progn')){throw 'special_form_or_fallthrough'}
  $previous=-1
  foreach($position in $positions){if($position -le $previous){throw 'load_policy_not_restored_before_reader'};$previous=$position}
  @{status='observed_partial';source_sha256=(Get-FileHash -LiteralPath $request.source).Hash.ToLowerInvariant();execution_authorized=$false;
