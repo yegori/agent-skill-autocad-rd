@@ -35,6 +35,19 @@
   Неизвестные format/device малого входа блокируют whole draft; explicit subset не равен всему комплекту.
   Контракт/10 converter tests/5 fake-native scenarios — docs/15_resource_inventory.md.
 
+### Side database → AutoLISP: ранний выход после marker (10.11.2026)
+
+- После metadata большого source в console есть два `VLA-OBJECT nil`, затем запрет command из `*error*`.
+  Возврат из managed reader к Lisp DELAY сорвал controlled lifetime; точный старый exit code не сохранён,
+  источник VLA/реактор не установлен. Не приписывать это QUIT AV/повреждению DWG по одному похожему симптому.
+- Для dependency reader source DB/transaction и JSON закрываются, source SHA проверен, marker записан;
+  затем **managed sleep внутри команды**, без возврата к Lisp DELAY, до собственного bounded Job stop.
+  Один реальный большой source прошёл за ~8.13 s. VLA warnings остались (не скрывать!), но command из *error*
+  и ранний выход в новом тесте не повторились; остальные native fields совпали с прежним diagnostic raw.
+- Только read-only metadata через owned wrapper, не interactive/print/SaveAs. Marker + ранний exit=0 всё ещё отказ.
+  `RootExitCodeBeforeStop` новых запусков берётся по held handle до stop, null для живого root; старый код
+  не восстанавливать из отсутствия WER events. Подробности/ограничения — `17_dependency_probe.md`.
+
 ## Полный acad.exe в пакетном режиме (нужен для СПДС)
 
 - `acad.exe /nologo /b run.scr` **без чертежа**. Файлы открывает сам плагин (`DocumentManager.Open`): если передать DWG в командной строке, модальное окно «Информация о прокси-объектах» заблокирует скрипт. Поэтому на время работы `PROXYNOTICE = 0`, потом вернуть.

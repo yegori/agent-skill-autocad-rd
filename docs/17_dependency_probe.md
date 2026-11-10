@@ -2,7 +2,21 @@
 
 08–10.11.2026. Продолжение explicit staging (`16_staging_plot.md`). Не включать печать/общий consumer по этой заготовке.
 
-## Последняя native приёмка — частичная (10.11)
+## Последняя native приёмка — большой source прочитан (10.11)
+
+Runtime **fa34d5c** установлен на RYZENDT. Один новый genuine Pi/один CAD-start на том же большом source:
+**8.13 s**, native hold внутри managed команды, root alive before stop/cleanup verified, exit_code=null,
+outer Job empty. Источник/снимок и 30 issue files, 28 Plotters/configs неизменны; pause/idle/ready возвращены.
+Один paper layout А1, 12 xref/44 STYLE records; strict issue-only inventory независимо воспроизведён:
+needs_input/56 ресурсных вопросов, external bindings=0. Это metadata, не actual usage/closure/печать.
+14 прежних полей raw совпали, новое поле только completion_hold; старый failed не переоценён.
+
+**Оговорка:** две строки `VLA-OBJECT nil` остаются и в новом stdout. Исчез последующий сбой command из
+`*error*`/ранний выход в этом read-only сценарии, не все проблемы стороннего Lisp/ActiveX окружения.
+Точный источник предупреждений не установлен. Нельзя переносить managed hold на plot/SaveAs или
+утверждать, что DWG/всё окружение исправлены. Приватный locator — `dependency_root_exit`.
+
+## Предыдущая native приёмка — частичная (10.11, 48bad1a)
 
 Runtime `48bad1a`: настоящий Pi в same-user disconnected session выполнил **два** последовательных CAD-start.
 Первый source принят: один paper layout А2, direct xref найден внутри selected snapshot, 18 STYLE records,
@@ -20,7 +34,7 @@ Outer Job empty, pause/idle/ready восстановлены; 30 selected source
 Проектные пути/UUID/шрифты/изображения — private locator `issue_dependency_acceptance`, не Git.
 Полная native приёмка reader, nested/actual resources closure, остальные DWG и печать остаются впереди.
 
-## Разбор раннего выхода (10.11, до нового native теста)
+## Разбор раннего выхода (10.11)
 
 В исходном console output большого source после загрузки Civil OE есть `VLA-OBJECT nil` и запрет
 `(command)` из `*error*` без `*push-error-using-command*`. Это конкретная ошибка AutoLISP после записи metadata,
@@ -34,7 +48,7 @@ Application Error/WER/.NET events в ограниченном временном
 Owned helper теперь получает nullable unsigned `RootExitCodeBeforeStop` по исходному held handle до Stop;
 живой root → null, собственный termination code не выдается за natural exit. Старое evidence не дополнено задним числом.
 45 Python tests, fake-wrapper 4 сценария и native fake-process tests (exit=17/NTSTATUS bits/sentinel) проходят;
-это ещё не реальный тест исправления на большом DWG.
+они проверены отдельно от нового реального теста большого DWG, описанного выше.
 
 ## Подготовка и сохранённые отказы
 

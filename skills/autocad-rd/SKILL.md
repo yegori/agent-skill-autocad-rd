@@ -34,7 +34,7 @@ description: Use when the user works with AutoCAD/Civil 3D drawing sets of worki
 inspect_resources → resource_inventory. Она запускает CAD, требует явного допуска и не печатает/не меняет PMP.
 Явный staging snapshots/working/environment bindings и отдельный тестовый ControlledPlot — `docs/16_staging_plot.md`.
 Stage prepared/verified не означает полноту зависимостей, авторизацию или разрешение reuse.
-Experimental direct side-database dependency reader — `docs/17_dependency_probe.md`: один native read принят, большой source failed/root exited; полная приёмка НЕ пройдена;
+Experimental direct side-database dependency reader — `docs/17_dependency_probe.md`: малый read принят, новый большой read принят с managed hold; VLA warnings/полная closure остаются открыты;
 не запускать/не печатать в обход active service barrier, не принимать partial metadata за dependency closure.
 
 Скрипты брать из `toolkit/`, не писать заново.
