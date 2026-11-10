@@ -1,6 +1,26 @@
 # Direct dependencies через side Database — эксперимент, native acceptance НЕ пройдена
 
-08.11.2026. Продолжение explicit staging (`16_staging_plot.md`). Не включать печать/общий consumer по этой заготовке.
+08–10.11.2026. Продолжение explicit staging (`16_staging_plot.md`). Не включать печать/общий consumer по этой заготовке.
+
+## Последняя native приёмка — частичная (10.11)
+
+Runtime `48bad1a`: настоящий Pi в same-user disconnected session выполнил **два** последовательных CAD-start.
+Первый source принят: один paper layout А2, direct xref найден внутри selected snapshot, 18 STYLE records,
+5.11 s, native SHA/marker/source hashes совпали, root alive до owner stop/cleanup verified, exit_code=null.
+Штатный `--issue-only` converter после failed задания независимо дал needs_input/19 вопросов, без external bindings.
+STYLE записи не доказывают фактическое использование шрифтов; extensionless filename не угадывается.
+
+Второй, большой source: marker/native JSON получены, но root exited before stop (~9.15 s),
+AllDone=true/TimedOut=false/Terminated=false. **Операция failed, raw metadata не приняты**; третий файл не запускался.
+Весь job остаётся failed. Это не доказательство прежнего QUIT AV: здесь QUIT не вызывался, причина выхода ещё неизвестна.
+Следующее — диагностика lifetime большого source и отдельный ограниченный запуск после разбора, не whitelist marker-only success.
+
+Outer Job empty, pause/idle/ready восстановлены; 30 selected source files/snapshot, 28 Plotters и production configs прежние.
+45 Python tests (16 dependency), 3 fake-wrapper сценария и реальная ABI compile прошли на RYZENDT; они не заменяют native test.
+Проектные пути/UUID/шрифты/изображения — private locator `issue_dependency_acceptance`, не Git.
+Полная native приёмка reader, nested/actual resources closure, остальные DWG и печать остаются впереди.
+
+## Подготовка и сохранённые отказы
 
 09.11 старый service-инцидент закрыт отдельным протоколом rd-ci docs/32, новый files-only Pi completed.
 Это не native acceptance reader. До нового ограниченного прогона исправлен конфликт `$host` с read-only `$Host`
