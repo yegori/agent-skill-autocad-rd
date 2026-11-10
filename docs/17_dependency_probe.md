@@ -1,11 +1,32 @@
-# Direct dependencies через side Database — частичный read принят, usage candidate
+# Direct dependencies через side Database — bounded usage принят, closure не подтверждена
 
 08–10.11.2026. Продолжение explicit staging (`16_staging_plot.md`). Не включать печать/общий consumer по этой заготовке.
 
-## Новое приращение: наблюдаемые ссылки объектов (10.11, native-unvalidated candidate)
+## Последняя приёмка bounded usage (10.11, a655e22)
 
-Новый reader **ещё не выполнялся в CAD**. Offline: ABI compile против AutoCAD 2024 SDK, 23 dependency
-unit tests (52 Python суммарно), 4 прежних fake-wrapper сценария; это не native acceptance и не deployment.
+После verified bundle/clean FF на целевом ПК повторены 52 Python tests, 4 fake-wrapper cases,
+package check и SDK ABI compile. Затем **три отдельных genuine Pi jobs / три последовательных CAD-start**
+в active same-user session: зависимость-штамп, выбранный paper source, большой source. Native read:
+**5.12 / 4.11 / 10.15 s**, все root alive before owner stop/cleanup verified/exit_code=null/outer Job empty.
+Все jobs **needs_input ресурсов**, не failed. Pause возвращалась после каждого, одноразовые tasks удалены;
+30 source/snapshot files, 28 Plotters и production configs неизменны. Печати/SaveAs/перепривязки не было.
+
+Наблюдений 70 / 20000 / 20000; последние два достигли cap, `truncated=true`, budget не повышался.
+STYLE records с наблюдением 3/12, 14/29, 11/44; xref records с наблюдением 0/0, 2/2, 7/12.
+Strict issue-only inventory независимо воспроизведён: все 12/31/56 вопросов сохранены, external bindings=0.
+В двух paper sources найдена вставка штампа, exact relative binding/SHA совпали с отдельным accepted read.
+Это не рекурсивная closure/видимость/полнота инженерной проверки; остальные листы ещё не прочитаны.
+Metadata большого source совпали с прошлым accepted read без новых usage/record_handle fields.
+Две VLA warnings большого source остались, command-from-*error* не наблюдалась; причина предупреждений неизвестна.
+
+Private locator **`dependency_usage_acceptance`** содержит отчёт, raw/independent inventories, session/Job evidence
+и command audit. Проектные имена/пути/UUID не переносить в Git. Runtime сервиса не менялся; Telegram candidate
+разрабатывался отдельно, не установлен. Прежние failed/raw/outcomes не переоценены.
+
+## Подготовка приращения и его контракт (до native приёмки)
+
+До описанного выше прогона reader имел статус native-unvalidated candidate: ABI compile против AutoCAD 2024 SDK,
+23 dependency unit tests (52 Python суммарно), 4 fake-wrapper сценария сами по себе не были native acceptance.
 Ранее принятые reads ниже остаются валидными для их прежнего table-only coverage; старые failed не переоценены.
 
 Аддитивные поля native JSON: `record_handle` у STYLE/xref records и необязательный `usage` (schema_version=1).
@@ -48,7 +69,7 @@ Synthetic fixture `scripts/fixtures/dependency_usage.json`: обычный те�
 частичный capped graph, legacy, неверный provenance/coverage, completion/source/raw SHA и exclusive output.
 Это synthetic converter tests, **не исполнение C# scan на реальной базе**.
 
-### Заявка координатору на bounded native acceptance (не выполнена)
+### Первоначальная заявка координатору (выполнена выше в ограниченном scope)
 
 После своего live preflight/допуска — до **трёх последовательных CAD-шагов**, один source DWG на wrapper,
 новые evidence directories, отдельный проверенный host; общий guard/owned Job и прежние тайм-ауты без ослабления:
