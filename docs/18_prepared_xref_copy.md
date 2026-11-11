@@ -1,9 +1,33 @@
 # Три явно выбранные xref → одна НОВАЯ подготовленная DWG-копия
 
-**Offline candidate, НЕ native-accepted.** Новый write/SaveAs mode не наследует приёмку
-ControlledRead/ControlledPlot/dependency reader. Нужны отдельные реальные SDK compile и scoped acceptance.
+**Первая ограниченная native цепочка принята, НЕ общая приёмка выпуска.** Отдельный write/SaveAs mode
+не наследует приёмку reader/ControlledPlot; именно для него выполнены real SDK compile и один explicit3map trial.
 Никаких автоматических запусков, deployment, рекурсивного discovery, инженерных правок или выдачи здесь нет.
 `docs/17_dependency_probe.md` и его reader остаются только read-only.
+
+## Первый реальный explicit3map trial
+
+Реальная SDK compile +4changed-path host tests PASS (offline19Python/17fake-wrapper/4managedstub уже reviewed,
+не повторялись на host). Три genuine Pi/serial CAD: **prepare6,11с -> derived read4,08с -> A1plot31,56с**.
+Везде root alive before owner stop/cleanup verified/null exit/outer Job empty; pause/manual/idle/ready,
+все scheduled tasks удалены. Source/snapshots/targets/Plotters/production и старые queue/cursor/stages прежние.
+Direct3handles/name/newrelativepaths/targetSHA подтвердились; console plot действительно загрузила3xref из
+внутреннего spool. Полный source filename и номер листа на выбранном crop сохранились; это не F2/full-release acceptance.
+
+**Побочный SaveAs delta:** одна STYLE с пустым FileName стала `GOST_0.TTF` при прежнем typeface `GOST type A`.
+Layouts и прочие font records совпали. Первоначальный font-equality assertion сохранён как failure,
+отсутствующий finished не backfill: отдельный independent postflight воспроизвёл inventory/подтвердил3paths,
+разрешил только exploratory PDF QA с известным delta. Не назначать filename обратно/не скрывать различие.
+Actual plot также Bm431→simplex; font/proxy/полная resource closure/semantic identity/выпуск НЕ приняты.
+Даже API-only PathName update не доказывает, что SaveAs изменил только эти сериализованные поля.
+
+До native были2known zero-CAD outcomes: outside-project runner input failed before Pi; затем genuine needs_input
+на ошибочно названную future-output map до staging. Оба сохранены, reviewed/closed, новые UUID, source guard
+не ослаблен. Caller input_dir должен быть ВНУТРИ project_root; нельзя precreate runner output.
+Инструкции упорядочивать: существующая approved map -> filesystem staging в уже созданный runner output -> wrapper.
+Известные input gaps устраняет координатор, не задаёт инженеру тот же вопрос и не replay старый job.
+Private locator rd-ci `prepared_xref_copy`; actual artifacts/подробности не в Git. Повтор этого trial запрещён;
+следующая копия/массовое применение требуют своего scope/проверки, не получают автоматический допуск.
 
 ## Контракт
 

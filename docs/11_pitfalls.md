@@ -60,6 +60,14 @@
   Число `unsupported_entity` не равно числу дефектов/прокси/отсутствующих шрифтов. Все 12/31/56 inventory
   вопросов трёх reads сохранены; это не столько подтверждённых дефектов печати. Подробности — docs/17.
 
+### Side-DB SaveAs не гарантирует «только изменённые PathName» (11.11)
+
+- В первом explicit3xref prepared-copy trial API менял только3BTR.PathName, но после SaveAs у одной STYLE
+  пустой FileName стал GOST_0.TTF при прежнем typeface. Source/snapshot неизменны; новый read выявил delta.
+  Не скрывать это как semantic identity и не назначать шрифт обратно автоматически. Сравнивать metadata
+  original/derived, отдельно оценивать font/proxy/PDF. Известный bounded delta можно отдельно наблюдать в
+  exploratory печати, не признавая копию выпуском. Новый инструмент/приёмка — docs/18_prepared_xref_copy.md.
+
 ## Полный acad.exe в пакетном режиме (нужен для СПДС)
 
 - `acad.exe /nologo /b run.scr` **без чертежа**. Файлы открывает сам плагин (`DocumentManager.Open`): если передать DWG в командной строке, модальное окно «Информация о прокси-объектах» заблокирует скрипт. Поэтому на время работы `PROXYNOTICE = 0`, потом вернуть.
