@@ -89,6 +89,21 @@ Bounded EnumWindows/child search выбирает `_WwG` только original P
 только этому pane; возвращённый Application.Hwnd тоже должен принадлежать original STILL-LIVE root.
 Root.Guard перед OM/settings/Open/операциями; root handoff/early exit (даже 0), foreign HWND,
 непоявление pane или недоступный OM — failed, никакого fallback на другой процесс.
+
+Identity chain: Bind callback явно возвращает `,object`, чтобы PowerShell не раскрыл IEnumerable
+pane в pipeline до Keep-CoverRcw. Pure Keep helper сохраняет scalar reference; array/null/замена объекта
+от Track отвергаются, без unwrap/подбора/повторного bind. Этот managed дефект воспроизведён на inert
+IEnumerable pane, **не доказано**, что настоящий Word RCW имел такой shape или это причина старого сбоя.
+Application/Hwnd берутся через фиксированные PS property descriptors с явным `get_Value()`:
+исключение getter не должно тихо превратиться в null. Реальный COM adapter ещё требует проверки.
+До `[long]` проверяются null/array/CLR integer type/overflow; Hwnd=0 у application — отказ до PID lookup,
+selector=0 остаётся только ожиданием pane в прежнем deadline. Нет speculative signed32/64 reinterpretation.
+`native-result.identity_chain` содержит фиксированный substep (selector/pane_pid_lookup/bind/pane_track/
+application_access/application_track/application_hwnd_get/validate/application_pid_lookup/document),
+только scalar integer HWND/CLR numeric type либо null/array shape/length, Track shape/reference flags, observed PID/match flags,
+outer/inner HRESULT и вложенный Win32 error code. Нет COM serialization/ToString/Name/text/captions.
+Missing getter/null/zero не схлопываются в одну причину; provenance failure не заменяет primary error.
+Новая provenance не восстанавливает неизвестные HWND/substep прошлых failed UUID задним числом.
 `/w` вместо `/x` явно запрашивает отдельный instance **с новым blank**, `/a` и `/q` сохранены;
 `/Automation`, shell/DDE/factory/ROT, source или synthetic seed на argv не используются.
 Это кандидат startup policy, не доказательство, что switches исполнены/прежняя pane-причина исправлена.
@@ -154,6 +169,11 @@ pwsh -NoProfile -File scripts/test_cover_document.ps1
 pwsh -NoProfile -File scripts/test_cover_owner.ps1
 ```
 
+Для изменённой identity chain — отдельно `pwsh -NoProfile -File scripts/test_cover_identity_chain.ps1`:
+actual Invoke-CoverSession + actual Keep helper + production Bind callback AST, только inert objects,
+healthy scalar/IEnumerable path и invalid/foreign/stale/null/array/Track/getter cases до Document tripwire.
+Это не реальная Word/NativeOM/Open/export acceptance и не основание ещё одного физического повтора без review.
+
 Для изменённого startup/window/blank guard — отдельно
 `pwsh -NoProfile -File scripts/test_cover_pane_startup.ps1`: только inert Win32/Word/process stubs,
 без настоящего EnumWindows/NativeOM/Word. Не повторять неизменённые kernel/UTF-8/CAD suites.
@@ -169,6 +189,6 @@ watchdog/session ownership gates и timeout uncertainty. Три реальные
 Windows privilege; mocked reparse отдельно. Никакой Word/COM/native process activation в этих тестах.
 Fake Open boundary НЕ моделирует IDispatch optional Missing marshaling; C# compile-only не native read.
 Настоящие HWND/_WwG/OM/Open(optional args)/SaveAs/Export/Close/release/Job-family acceptance ещё нужны.
-Координатор: review changed startup/window/blank policy → fresh UUID/approved passthrough draft в NEW location →
+Координатор: review changed identity chain → выбрать fresh UUID narrow identity probe либо approved passthrough в NEW location →
 provenance/cleanup audit → визуальная/text/requisites/headers/images/fields/layout QA. Никаких
 инженерных значений/шифров/дат/ревизий автоматически не исправлять, B/В конфликт не нормализовать.

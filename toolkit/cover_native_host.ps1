@@ -5,14 +5,7 @@ $ErrorActionPreference = 'Stop'
 $config = Get-Content -LiteralPath $ConfigPath -Raw | ConvertFrom-Json -AsHashtable
 $result = @{status='failed'; native_accepted=$false; draft=$true; phase='prerequisites'; cleanup_verified=$false}
 $owner = $null; $rcws = [Collections.Generic.List[object]]::new(); $failure = $null
-function Keep-CoverRcw($value) {
-    if ($null -ne $value) {
-        $seen = $false
-        foreach ($held in $rcws) { if ([object]::ReferenceEquals($held,$value)) { $seen=$true; break } }
-        if (-not $seen) { $rcws.Add($value) }
-    }
-    return ,$value
-}
+$identityEvidence = @{}
 function Write-CoverPhase([string]$value) {
     $result.phase = $value
     [IO.File]::AppendAllText($config.audit, "$value`n")
@@ -36,16 +29,18 @@ try {
     Write-CoverPhase 'pane'
     $documentResult = Invoke-CoverSession $owner `
         { param($original) [AutocadRd.CoverWindow]::FindPane($original) } `
-        { param($hwnd,$original) [AutocadRd.CoverWindow]::Bind($hwnd,$original) } `
+        { param($hwnd,$original) return ,([AutocadRd.CoverWindow]::Bind($hwnd,$original)) } `
         { param($hwnd) [AutocadRd.CoverWindow]::ProcessId($hwnd) } `
         ${function:Keep-CoverRcw} `
         { param($application) Invoke-CoverDocument $application $config { $owner.Guard() } ${function:Keep-CoverRcw} ${function:Write-CoverPhase} } `
-        $config.pane_timeout_sec
+        $config.pane_timeout_sec $identityEvidence
     $result.document = $documentResult.document
     $result.ownership = $documentResult.ownership
+    $result.identity_chain = $identityEvidence
     Write-CoverPhase 'release'
 } catch {
     $failure = $_; $result.error = $_.ToString()
+    if ($identityEvidence.Count) { $result.identity_chain = $identityEvidence }
     $result.failure_phase = if ($_.Exception.Data['cover_phase']) { $_.Exception.Data['cover_phase'] } else { $result.phase }
     if ($owner -and $result.phase -eq 'pane') {
         $diagnostic = Get-CoverReadinessFailureEvidence $owner {param($original) [AutocadRd.CoverWindow]::Capture($original)}
