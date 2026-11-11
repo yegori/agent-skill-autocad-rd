@@ -25,6 +25,7 @@
 | `find_codes.py` | C1: чужие коды сооружений, устаревшие формулировки/ГОСТ — на листах и в именах макетов; разбор журнала `run_txtfix.ps1 -Dry`. |
 | `compare_pdfs.py` | R1 / «PDF актуальны»: старая выдача против новой постранично; отличия по скоплениям пикселей с областями в мм, штамп отдельно; `--diff-out` — картинки «было / стало». |
 | `pdf_tools.py` | `render` (страница → PNG), `stamps` (текст штампа), `grep [--missing]` (поиск текста по PDF), `sizes` (форматы страниц). |
+| `report_pdf.py` | Готовый UTF-8 MD + локальные PNG/JPEG → новый self-contained PDF-отчёт (PyMuPDF), обычные image links тоже встраиваются. Только оформление, не PDF-комплект; запрет files_only, subset/безопасные пути/manifest — `../docs/13_orchestrator.md`. Тест: `python -I -m unittest discover -s scripts -p test_report_pdf.py` из корня пакета. |
 | `snap_window.ps1` | Снимок окон процесса (PrintWindow) — диагностика зависшего acad.exe / диалогов в пакетном режиме. |
 | `od\` | Лист «Общие данные» по образцу: `od_lib.py`, `build_od.ps1`, шаблон генератора `example_gen_od.py`. |
 | `quantities\` | Объёмы (Q, `..\docs\03_checks.md`): `export_dxf.ps1` (DWG → DXF), `slope_area.py` (площадь в плане и по 3D-откосу), `layer_stats.py` (сводка по слоям, «узкие прямоугольники»), `massprop.ps1` (объёмы 3D-тел). |
