@@ -17,7 +17,7 @@ rd-ci v0.4 — тонкий оркестратор Pi с этим пакетом
 | S1 | Состав комплекта против ведомости ОД | листы ведомости ↔ номера в именах DWG; лишние/недостающие | 🔴 нет листа / 🟡 лишний файл | — | 🟨 | новое (ведомость — из паспорта/ОД) |
 | S2 | Имена файлов листов | номер в начале имени («003 …», «004-005 …»), без `_recover`, без дублей номеров | 🔴 | авто (переименование) | 🟨 | логика `plot_set` (Get-Nums) |
 | S3 | Мусор в выдаче | .bak, _recover, plot.log, ~$, .dwl, .tmp | 🟡 | авто (в архив) | ✅ | `clean_issue.ps1` |
-| S4 | Внешние ссылки | все находятся; пути относительные `.\Внешние_ссылки\…`; файлы есть в папке выдачи | 🔴 | авто (перепривязка `-XREF _P`, докопирование) | ✅ | `xrefs.ps1` (`-Relativize`, `-CopyMissingFrom`) |
+| S4 | Внешние ссылки | отдельно: относительная переносимость/containment и existence/hash; каждая project xref внутри выбранной выдачи (любые internal subfolders), иначе finding даже при наличии файла; nested path — от каждой referring DWG; Fonts/PC3/CTB отдельно | 🔴 | исправление только по explicit approved map на NEW copy; bounded metadata не closure | частично | `inspect_dependencies.ps1` + `dependency_inventory.py --issue-only`; legacy `xrefs.ps1` не общий S4 verifier; новый write candidate — [docs18](18_prepared_xref_copy.md), native acceptance pending |
 | S5 | Обложка | .doc и PDF есть; шифр/наименование = паспорт; кириллица/латиница в шифре (В590/B590) | 🔴 | авто (из шаблона) | 🟨 | `make_cover.ps1` (создание); сверка текста — `pdf_tools.py grep` |
 | F1 | Шифр и наименование в штампе | MTEXT в `штамп.dwg` ↔ паспорт | 🔴 | авто | 🟨 | handle 157/15B (Архыз) → из паспорта |
 | F2 | Номер листа | поле/атрибут/текст ↔ номер из имени и порядка вкладок | 🔴 | авто (кроме полей) | ✅ | `check_sheet_numbers.ps1` |

@@ -49,6 +49,7 @@ claude plugin install rd-ci@rd-ci-arkhyz
 | `docs/15_resource_inventory.md`, `toolkit/inspect_resources.ps1`, `toolkit/resource_inventory.py` | До трёх read-only probe, raw evidence/SHA/timings → проверенный консервативный draft, не печать |
 | `docs/17_dependency_probe.md`, `toolkit/inspect_dependencies.ps1` | Strict `--issue-only`, 23 unit + 4 fake-wrapper cases; bounded usage принят в 8 genuine single-CAD reads/needs_input, пять capped. Первый metadata-проход выбранных печатных sources завершён (ОД отдельно legacy); источник прежних VLA warnings не установлен, не closure/печать |
 | `docs/16_staging_plot.md`, `toolkit/stage_inputs.py` | Explicit-only stage/snapshot/working/environment hashes и тестовый ControlledPlot; не discovery/авторизация/reuse |
+| `docs/18_prepared_xref_copy.md`, `toolkit/prepare_xref_copy.ps1` | Offline THREE-map write candidate на одной NEW копии; native compile/SaveAs acceptance pending, не closure/выдача |
 | `docs/PROJECT_CLAUDE_TEMPLATE.md` | Шаблон инструкции для папки объекта |
 | `docs/06_decisions.md` | Решения по пакету и границе с сервисом |
 | `examples/reports/` | Пример генерации таблицы замечаний |

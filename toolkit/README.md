@@ -12,7 +12,8 @@
 | `renum_stamp.ps1` | Перенумерация в штампах по таблице «старый → новый» (MTEXT вида «Т7.N»). |
 | `set_sheet_attr.ps1` | Номер листа в атрибут — только для действительно пустых (не трогать поля!). |
 | `fix_layouts.ps1` | Переименование макетов, удаление пустых. |
-| `xrefs.ps1` | Внешние ссылки: отчёт OK / НЕ ОТНОСИТЕЛЬНЫЙ / НЕТ ФАЙЛА (S4); `-Relativize` → `.\Внешние_ссылки\<файл>`; `-CopyMissingFrom`. |
+| `xrefs.ps1` | Legacy basename/фиксированная папка, generic workdir cleanup, QUIT/`-Apply` source overwrite; НЕ общий S4 verifier и НЕ controlled prepared-copy acceptance. |
+| `prepare_xref_copy.ps1`, `prepare_xref_copy.py`, `dependencies/PrepareXrefCopy.cs` | Offline write candidate: ровно THREE exact BTR maps/source+target SHA → одна NEW full-filename copy, side-DB SaveAs/reopen, distinct managed hold/private Job, no-overwrite publish. Не native-accepted/closure/engineering approval; `../docs/18_prepared_xref_copy.md`. |
 | `plot_set.ps1`, `merge_set.py` | Печать всех макетов в `NNN <наименование>.pdf` (перед печатью — проверка форматов) и сводный PDF (обложка + листы). |
 | `inspect_dependencies.ps1`, `dependencies/DependencyProbe.cs`, `dependency_inventory.py` | Experimental direct side-DB refs/fonts/assets/layout metadata; не actual closure/authorization. Новый большой read принят с managed hold после старого failed, needs_input ресурсов; VLA warnings/полная closure открыты, `../docs/17_dependency_probe.md`. |
 | `stage_inputs.py` | Новые snapshot/working, declared file/environment hashes, exact verify/plan-step refs; coverage explicit_not_discovered, всегда execution_authorized=false. `../docs/16_staging_plot.md`. |
