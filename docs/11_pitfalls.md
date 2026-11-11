@@ -124,7 +124,7 @@
 - «**Нет подходящего носителя**» в логе означает, что в макете нестандартный формат (например «UserDefinedMetric (1189.00 x 420.00мм)»), которого нет в `%APPDATA%\Autodesk\AutoCAD 2024\R24.3\rus\Plotters\PMP Files\DWG To PDF.pmp`. PMP — JSON после строки-заголовка: добавить запись в `udm.media.description` и `udm.media.size`, имя (`name`) — точно как в макете. Сначала сделать резервную копию PMP.
 - Project xrefs должны разрешаться внутри selected issue (произвольные internal subfolders допустимы), относительно каждой referring DWG. Relative portability/containment и existence проверяются отдельно; outside target — finding даже при наличии файла. Fonts/PC3/CTB — environment, не project xrefs.
 - Перепривязка на NEW copy — отдельный write/SaveAs допуск, не наследие read/plot acceptance. Новый exact THREE-map candidate (`18_prepared_xref_copy.md`) не открывает old targets и не ищет basename; SaveAs может пересериализовать proxy/поля, поэтому source/output SHA не доказывают semantic identity/качество. Native compile/prepare → derived read → plot acceptance ещё требуются.
-- PDF из Word: COM `Documents.Open` → `Content.Find.Execute(…, 2)` (заменить всё) → `ExportAsFixedFormat(pdf, 17)`.
+- Старый рецепт PDF из Word `Documents.Open` → `Content.Find.Execute(…, 2)` → `ExportAsFixedFormat(pdf, 17)` небезопасен без own-instance ownership/cleanup, macro/link guards, exact counts и no-replace publication. `make_cover.ps1` теперь только явный offline `-PreflightOnly`, default native заблокирован; `19_safe_cover.md`. Find.Execute boolean не доказывает число замен/полноту stories.
 
 ### PMP и стандартный формат (05.11.2026)
 

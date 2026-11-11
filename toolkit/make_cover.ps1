@@ -1,26 +1,27 @@
-# Обложка/титул комплекта из шаблона Word: копия .doc с заменой фраз + экспорт в PDF (Word COM, Word должен быть установлен).
-#   .\make_cover.ps1 -Template "…\01_В590_110504_1_6_ИЗ11.doc" -Out "…\DWG\01_В590_110504_1_6_ИЗ2.doc" `
-#                    -Replace ([ordered]@{ "ВОДОПРОПУСКНОЕ СООРУЖЕНИЕ В-5А-2" = "ВОДОПРОПУСКНОЕ СООРУЖЕНИЕ В-4А-2";
-#                                         "ГОРНОЛЫЖНАЯ ТРАССА T5A" = "ГОРНОЛЫЖНАЯ ТРАССА T4A"; "01/B590.110504.1.6-ИЗ11" = "01/B590.110504.1.6-ИЗ2" }) `
-#                    [-Pdf "…\PDF\01_В590_110504_1_6_ИЗ2.pdf"]
-# Заменять фразы ЦЕЛИКОМ (напр. «T5A» встречается и в названии проекта). Порядок замен — как в [ordered]-таблице.
-# Шифр в тексте — латинская B (01/B590…); имя файла обложки исторически с кириллической В.
-# Проверка результата: python pdf_tools.py grep <pdf> "<новый шифр>"
-param([Parameter(Mandatory)][string]$Template, [Parameter(Mandatory)][string]$Out, [Parameter(Mandatory)][System.Collections.IDictionary]$Replace,
-      [string]$Pdf = "", [switch]$Force)
-if ((Test-Path -LiteralPath $Out) -and -not $Force) { throw "$Out уже есть (-Force — перезаписать)" }
-New-Item -ItemType Directory -Force (Split-Path $Out) | Out-Null
-Copy-Item -LiteralPath $Template $Out -Force
-$wd = New-Object -ComObject Word.Application; $wd.Visible = $false; $wd.DisplayAlerts = 0
-try {
-  $d = $wd.Documents.Open($Out, $false, $false)
-  foreach ($k in $Replace.Keys) {
-    $f = $d.Content.Find
-    # Execute(FindText, MatchCase, MatchWholeWord, MatchWildcards, MatchSoundsLike, MatchAllWordForms, Forward, Wrap, Format, ReplaceWith, Replace=2 (все))
-    $ok = $f.Execute($k, $true, $false, $false, $false, $false, $true, 0, $false, $Replace[$k], 2)
-    "{0} «{1}» → «{2}»" -f $(if ($ok) { "заменено" } else { "НЕ НАЙДЕНО" }), $k, $Replace[$k]
-  }
-  $d.Save()
-  if ($Pdf) { New-Item -ItemType Directory -Force (Split-Path $Pdf) | Out-Null; $d.ExportAsFixedFormat($Pdf, 17); "PDF: $Pdf" }
-  $d.Close($false)
-} finally { $wd.Quit(); [void][Runtime.InteropServices.Marshal]::ReleaseComObject($wd) }
+# Offline fail-closed cover preflight; native Word execution is intentionally blocked.
+# See ../docs/19_safe_cover.md. No COM activation, copies or output publication.
+[CmdletBinding()]
+param(
+    [Parameter(Mandatory)][string]$Template,
+    [Parameter(Mandatory)][string]$Out,
+    [System.Collections.IDictionary]$Replace = @{},
+    [System.Collections.IDictionary]$ExpectedCounts = @{},
+    [string]$TemplateSha256 = '',
+    [string]$Pdf = '',
+    [switch]$PassthroughDraft,
+    [switch]$PreflightOnly,
+    [switch]$Force
+)
+$ErrorActionPreference = 'Stop'
+# Do not dot-source common.ps1: its work-root creation is unnecessary for this read-only check.
+$request = @{
+    template = $Template; out = $Out; pdf = $Pdf
+    template_sha256 = $TemplateSha256; replace = $Replace; expected_counts = $ExpectedCounts
+    passthrough_draft = [bool]$PassthroughDraft; force = [bool]$Force
+} | ConvertTo-Json -Depth 10 -Compress
+$lines = $request | & python -I (Join-Path $PSScriptRoot 'cover_preflight.py')
+if ($LASTEXITCODE -ne 0) { throw "cover_preflight_failed: $($lines -join [Environment]::NewLine)" }
+if (-not $PreflightOnly) {
+    throw 'native_word_ownership_timeout_cleanup_not_implemented: no Word activated or outputs created; use -PreflightOnly for an offline contract/path check, not generation'
+}
+$lines

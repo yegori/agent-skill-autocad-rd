@@ -89,7 +89,7 @@ Experimental direct side-database dependency reader — `docs/17_dependency_prob
 | PDF актуальны / что изменилось против прошлой выдачи | `python -I compare_pdfs.py <старое> <новое> [--diff-out …]` |
 | Текст штампов, поиск текста, форматы, рендер PDF | `python -I pdf_tools.py stamps|grep|sizes|render …` |
 | Самодостаточный отчёт из готового MD + локальных PNG/JPEG (не drawing set; запрещён в files_only) | `python -I report_pdf.py <summary.md> --output <NEW report.pdf>`; ограничения и manifest — `docs/13_orchestrator.md` |
-| Обложка из шаблона Word; мусор в выдаче | `make_cover.ps1`, `clean_issue.ps1 [-Apply]` |
+| Обложка из шаблона Word; мусор в выдаче | `make_cover.ps1 -PreflightOnly` — только offline контракт, native generation заблокирован (`docs/19_safe_cover.md`); `clean_issue.ps1 [-Apply]` |
 | Лист ОД по образцу | `od/build_od.ps1` + генератор по шаблону `od/example_gen_od.py` |
 | Объёмы: площадь по откосу, объекты по слоям, объёмы 3D-тел | `quantities/export_dxf.ps1` → `slope_area.py` / `layer_stats.py`; `quantities/massprop.ps1` |
 | Зависший пакетный acad.exe — что на экране | `snap_window.ps1` |
