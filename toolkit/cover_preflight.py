@@ -156,9 +156,15 @@ def _unique_object(pairs: list) -> dict:
     return result
 
 
+def read_utf8_request() -> dict:
+    # CLI wire contract is UTF-8 bytes, independent of locale TextIO decoding (-I retained).
+    return json.loads(sys.stdin.buffer.read().decode("utf-8", errors="strict"),
+                      object_pairs_hook=_unique_object)
+
+
 def main() -> int:
     try:
-        result = preflight(json.load(sys.stdin, object_pairs_hook=_unique_object))
+        result = preflight(read_utf8_request())
     except (ValueError, OSError) as error:
         print(json.dumps({"status": "failed", "error": str(error)}, ensure_ascii=True))
         return 1

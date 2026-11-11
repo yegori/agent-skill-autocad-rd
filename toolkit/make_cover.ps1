@@ -19,8 +19,14 @@ $request = @{
     template_sha256 = $TemplateSha256; replace = $Replace; expected_counts = $ExpectedCounts
     passthrough_draft = [bool]$PassthroughDraft; force = [bool]$Force
 } | ConvertTo-Json -Depth 10 -Compress
-$lines = $request | & python -I (Join-Path $PSScriptRoot 'cover_preflight.py')
-if ($LASTEXITCODE -ne 0) { throw "cover_preflight_failed: $($lines -join [Environment]::NewLine)" }
+# Script-local UTF-8 wire encoding; never alter OS/console/profile encoding.
+$previousOutputEncoding = $OutputEncoding
+try {
+    $OutputEncoding = [Text.UTF8Encoding]::new($false, $true)
+    $lines = $request | & python -I (Join-Path $PSScriptRoot 'cover_preflight.py')
+    $cliExitCode = $LASTEXITCODE
+} finally { $OutputEncoding = $previousOutputEncoding }
+if ($cliExitCode -ne 0) { throw "cover_preflight_failed: $($lines -join [Environment]::NewLine)" }
 if (-not $PreflightOnly) {
     throw 'legacy_cover_native_disabled: no Word activated or outputs created; use -PreflightOnly for offline checks or the separately authorized make_cover_draft.ps1 candidate (native acceptance pending)'
 }

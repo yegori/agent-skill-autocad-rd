@@ -173,7 +173,7 @@ def generate(request, *, backend=None, pdf_validator=None, publisher=copy_new):
 
 def main():
     try:
-        request = json.load(sys.stdin, object_pairs_hook=pre._unique_object)
+        request = pre.read_utf8_request()
         result = generate(request)
     except (ValueError, OSError, RuntimeError, ImportError) as error:
         result = {"status": "failed", "error": str(error), "native_accepted": False}

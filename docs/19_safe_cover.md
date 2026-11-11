@@ -36,6 +36,11 @@ Python API `generate(request)` / CLI `python -I toolkit/cover_draft.py` с JSON 
 `template`, `template_sha256`, `out`, `pdf`, `word_exe`, `word_sha256`, `work_parent`, `expected_pages`,
 `timeout_sec`, `pane_timeout_sec`, `replace`, `expected_counts`, `passthrough_draft`.
 Fake backend/validator инъекции существуют только в библиотечном unit-test API, не в CLI.
+JSON stdin обоих Python CLI — **строго UTF-8 bytes** независимо от locale TextIO/CP1251;
+invalid UTF-8 и duplicate JSON keys дают failed до staging/native. Обе PS-обёртки явно используют
+script-local UTF-8 без BOM для pipe и восстанавливают прежний `$OutputEncoding` даже при ошибке.
+`-I` сохранён; OS locale/chcp/console/profile и `PYTHONIOENCODING` не изменяются/не требуются.
+Unicode-пути и literal B/В не переименовываются/не нормализуются; stdout JSON остаётся ASCII-escaped.
 Успех возвращает `draft_generated_pending_coordinator_qa`, `draft=true`, `native_accepted=false`,
 `engineering_approved=false`, private `run_dir`, hashes, native/count/cleanup evidence и published paths.
 Это НЕ orchestrator manifest `13_orchestrator.md`; координатор формирует его отдельно после своей QA.
@@ -125,6 +130,11 @@ python -I -m unittest discover -s scripts -p test_cover_*.py -v
 pwsh -NoProfile -File scripts/test_cover_document.ps1
 pwsh -NoProfile -File scripts/test_cover_owner.ps1
 ```
+
+Для узкой transport-регрессии без любых native/ownership suites:
+`python -I -m unittest discover -s scripts -p test_cover_utf8_cli.py -v` — настоящие UTF-8 byte pipes,
+Cyrillic filenames, legacy CP1251 stdin только в isolated test child, PS roundtrip, invalid UTF-8/duplicates;
+draft CLI намеренно ExpectedPages=0 (pre-native gate), никаких Word/export acceptance claims.
 
 Только synthetic files/PDF, inert backend/CLR Word/process stubs. Проверяются path/hash/maps,
 collisions/partial publication, actual PS document lifecycle/order/count/overlap failures, managed

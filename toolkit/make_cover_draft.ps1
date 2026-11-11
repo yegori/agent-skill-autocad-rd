@@ -22,6 +22,12 @@ $request = @{
     replace=$Replace; expected_counts=$ExpectedCounts; passthrough_draft=[bool]$PassthroughDraft
     timeout_sec=$TimeoutSec; pane_timeout_sec=$PaneTimeoutSec
 } | ConvertTo-Json -Depth 10 -Compress
-$lines = $request | & python -I (Join-Path $PSScriptRoot 'cover_draft.py')
-if ($LASTEXITCODE -ne 0) { throw "cover_draft_failed (partials retained): $($lines -join [Environment]::NewLine)" }
+# Script-local UTF-8 wire encoding; never alter OS/console/profile encoding.
+$previousOutputEncoding = $OutputEncoding
+try {
+    $OutputEncoding = [Text.UTF8Encoding]::new($false, $true)
+    $lines = $request | & python -I (Join-Path $PSScriptRoot 'cover_draft.py')
+    $cliExitCode = $LASTEXITCODE
+} finally { $OutputEncoding = $previousOutputEncoding }
+if ($cliExitCode -ne 0) { throw "cover_draft_failed (partials retained): $($lines -join [Environment]::NewLine)" }
 $lines
