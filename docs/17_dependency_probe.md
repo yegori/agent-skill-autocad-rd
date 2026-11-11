@@ -2,7 +2,20 @@
 
 08–10.11.2026. Продолжение explicit staging (`16_staging_plot.md`). Не включать печать/общий consumer по этой заготовке.
 
-## Последняя приёмка bounded usage (10.11, a655e22)
+## Продолжение native приёмки (11.11, runtime a655e22 без изменений)
+
+Три следующих первых чтения основных sources, отдельные genuine Pi/serial single-CAD в disconnected same-user
+session: **12.21 / 3.09 / 7.14 s**, root alive/cleanup verified/exit_code=null/outer Job empty. Все needs_input.
+Observations **20000/11357/20000**, два truncated по прежнему cap; вопросы **36/31/35** сохранены,
+strict converter независимо воспроизведён, external bindings=0. Один paper A1 в каждом, сохранённые CTB
+различаются; это metadata, не повод автоматически исправлять plot settings. Exact stamp path/SHA подтверждены
+без нового stamp read; другие присутствующие xref targets ещё не раскрыты. Viewport/unsupported/closure не доказаны.
+В stdout этой тройки VLA warnings не наблюдались, причина прежних warnings большого source не установлена.
+30 source/snapshot files, 28 Plotters и configs прежние; pause/idle/ready возвращены, три tasks удалены.
+Не было runtime deployment/изменений toolkit, печати или SaveAs. Private locator **`dependency_remaining_reads`**.
+Это уже шесть usage reads в двух сериях; legacy table-only ОД отдельно. Первый проход всего комплекта ещё не закончен.
+
+## Первая приёмка bounded usage (10.11, a655e22)
 
 После verified bundle/clean FF на целевом ПК повторены 52 Python tests, 4 fake-wrapper cases,
 package check и SDK ABI compile. Затем **три отдельных genuine Pi jobs / три последовательных CAD-start**
