@@ -2,6 +2,20 @@
 
 08–10.11.2026. Продолжение explicit staging (`16_staging_plot.md`). Не включать печать/общий consumer по этой заготовке.
 
+## Две текущие зависимости прочитаны впервые (11.11)
+
+Два новых genuine Pi/serial single-CAD reads по предоставленным issue-relative DWG: **8,14 /10,15 с**,
+root alive before own stop/cleanup verified/exit_code=null/outer Windows Job empty. В обоих0xref/0asset;
+STYLE6/18, observations1633/20000 (второй capped). Strict inventory независимо воспроизведён, вопросы6/18
+сохранены, оба needs_input ресурсов. Это не24дефекта/не отсутствие установленных шрифтов: issue-only не искал
+system Fonts и mappings. Model/BTR observation и отсутствие cap не доказывают printed use/полную closure.
+
+Старые листы/штамп не перечитывались, suites/runtime не менялись.56source files двух версий/защищённый snapshot,
+Plotters/production/Telegram queue/cursor/stages прежние; после каждого шага pause/manual/idle/ready,
+CAD/Node нет, одноразовые tasks удалены. Private locator rd-ci `dependency_next`.
+Затем отдельно допущенный exploratory A1 plot одного source выполнен с явным font-substitution warning,
+не как автоматическое разрешение reader или полная resource closure — `16_staging_plot.md`.
+
 ## Первый metadata-проход выбранных печатных sources завершён (11.11)
 
 Ещё два первых genuine Pi/single-CAD read без изменения runtime: **4.09 / 3.07 s**, оба needs_input,

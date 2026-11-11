@@ -1,7 +1,29 @@
 # Явный staging и экспериментальный ControlledPlot
 
 Продолжение [15_resource_inventory.md](15_resource_inventory.md). Это не общий pipeline, dependency resolver,
-разрешение исправлений/выпуска или снятие single-DWG gate сервиса. Для первого опыта — только известный reference A4.
+разрешение исправлений/выпуска или снятие single-DWG gate сервиса. Первый опыт — известный reference A4;
+позднее выполнен один отдельно допущенный exploratory A1-тест, описанный ниже.
+
+## Отдельный exploratory A1 — native исполнение принято, качество ограничено
+
+На одном новом разрешённом paper source после hash-bound metadata/direct-xref чтений выполнен один genuine
+Pi → ControlledPlot: **12,32 с**, один A1 landscape, листовой и отдельный merged PDF. Stage8files/7declared
+environment bindings проверен до/после без allow-work-changes; root alive before stop/cleanup verified/null exit,
+outer Windows Job empty, scheduled task удалена, pause/idle/ready возвращены. Package runtime не менялся.
+Источник, snapshot/working, production и Plotters неизменны; только отдельный spool может отличаться.
+Это явный отдельный trial, не автоматическое расширение приёмки прежнего A4/разрешение всего комплекта.
+
+Доступные current xrefs и метаданные не были объявлены полной resource closure: inventory/stage authorization=false
+сохранены; оператор допустил только наблюдаемую тестовую печать. Консоль явно показала **Bm431 → simplex.shx**
+и сохранённую выгруженную съёмку; reload/подмены ресурсов вручную/PC3/PMP edits не делались. Успех процесса НЕ
+превращает такой PDF в принятый выпуск. Сопоставление выбранных читаемых таблиц и целого разреза подтвердило
+содержательные отличия от существующего issued PDF; правильный инженерный вариант не выбирался.
+
+Coordinator проверил весь tool audit/5PowerShell results, actual PDFs/overview и4target crops. Один non-native
+Get-Process query без процессов дал exit1, typo instruction read затем исправлен; raw failures сохранены,
+не потребовали повторного CAD. Автосравнение150dpi нашло27regions, max12images сохранены; все27regions не
+объявлялись визуально проверенными. Private rd-ci locator `sheet6_plot`; actual findings/evidence не в Git.
+Следующие sources/многолистовой порядок/font quality требуют отдельного scoped trial, не replay этого job.
 
 ## Snapshot + working
 
