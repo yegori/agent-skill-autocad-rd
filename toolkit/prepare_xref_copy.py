@@ -96,8 +96,10 @@ def validate(spec):
     if source.suffix.lower() != '.dwg' or r.digest(source) != stage.sha(spec['source_sha256']):
         raise PrepareError('prepare_source_sha_or_extension')
     output = no_links(issue / relative(spec['output_path']))
-    if (output.name != source.name or output.parent == issue or output.parent.exists()
-            or overlap(output.parent, source_root) or overlap(output.parent, Path(__file__).resolve().parents[1])):
+    package = Path(__file__).resolve().parents[1]
+    if (output.name != source.name or output.parent == issue or output.exists()
+            or (output.parent.exists() and not output.parent.is_dir())
+            or overlap(output.parent, source_root) or overlap(output.parent, package)):
         raise PrepareError('prepare_output_collision_or_overlap')
     maps = spec.get('mappings')
     if not isinstance(maps, list) or len(maps) != 3:
@@ -112,7 +114,7 @@ def validate(spec):
                 or ntpath.normcase(ntpath.normpath(old)) == ntpath.normcase(ntpath.normpath(row['new_path']))):
             raise PrepareError('prepare_bad_mapping_or_noop')
         target = new_target(issue, output, row['new_path'])
-        if (overlap(target, output.parent) or target == source or target.suffix.lower() != '.dwg'
+        if (target == output or overlap(target, source_root) or overlap(target, package) or target.suffix.lower() != '.dwg'
                 or r.digest(target) != stage.sha(row['target_sha256'])):
             raise PrepareError('prepare_target_binding')
         if handle.upper() in handles or name.casefold() in names or str(target).casefold() in targets:
@@ -145,7 +147,8 @@ def preflight(spec, host, host_sha, evidence):
     package = Path(__file__).resolve().parents[1]
     if (not str(evidence).isascii() or any(c in str(evidence) for c in '"\n\r') or evidence.exists()
             or any(overlap(evidence, p) for p in (source.parent, issue, host.parent, package))
-            or overlap(output.parent, package) or overlap(output.parent, host)):
+            or overlap(output.parent, package) or overlap(output.parent, host)
+            or any(Path(m['target']) == host for m in maps)):
         raise PrepareError('prepare_evidence_collision_or_overlap')
     # No cleanup or retry: after the first mkdir all failures retain partial evidence.
     evidence.mkdir(parents=True, exist_ok=False)
@@ -154,8 +157,10 @@ def preflight(spec, host, host_sha, evidence):
     snapshot = evidence / 'input' / source.name
     copy_new(source, snapshot, spec['source_sha256'])
     copy_new(host, evidence / 'host.dwg', host_sha)
-    # The output parent itself must be NEW. Targets were staged elsewhere in this issue beforehand.
-    output.parent.mkdir(parents=True, exist_ok=False)
+    # Caller may already have staged .\\refs descendants beside the future DWG.
+    # Only the exact output, evidence and private pending directory must be new.
+    no_links(output.parent)
+    output.parent.mkdir(parents=True, exist_ok=True)
     temp_dir = output.parent / ('_pending_' + uuid.uuid4().hex)
     temp_dir.mkdir()
     request = {'schema_version': 1, 'source': str(snapshot), 'source_sha256': spec['source_sha256'],
@@ -200,6 +205,8 @@ def check_bindings(evidence):
 def finish(evidence):
     evidence = no_links(evidence).resolve(strict=True)
     binding, request, output = check_bindings(evidence)
+    if (evidence / 'native.failure.json').exists():
+        raise PrepareError('prepare_native_failure_recorded')
     owned = read_json(evidence / 'owned.json')
     if (owned.get('AllDone') is not True or owned.get('TimedOut') is not False
             or owned.get('RootExitedBeforeStop') is not False or owned.get('Terminated') is not True

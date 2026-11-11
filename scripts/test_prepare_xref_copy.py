@@ -2,6 +2,7 @@
 import copy
 import importlib.util
 import json
+import ntpath
 import os
 from pathlib import Path
 import tempfile
@@ -31,6 +32,13 @@ class PrepareCopyTests(unittest.TestCase):
             self.spec['mappings'].append({'handle': str(i+1), 'name': f'ref{i}',
                 'old_path': f'Z:\\old\\missing{i}.dwg', 'new_path': f'..\\refs\\nested\\{i}.dwg',
                 'target_sha256': p.r.digest(file)})
+
+    def same_parent(self):
+        folder = self.issue / 'prepared' / 'Внешние_ссылки';folder.mkdir(parents=True)
+        for i, row in enumerate(self.spec['mappings']):
+            (folder / f'{i}.dwg').write_bytes((self.issue / 'refs/nested' / f'{i}.dwg').read_bytes())
+            row['new_path'] = ntpath.join('.', 'Внешние_ссылки', f'{i}.dwg')
+        return folder
 
     def pre(self):
         return p.preflight(self.spec, self.host, p.r.digest(self.host), self.evidence)
@@ -78,6 +86,62 @@ class PrepareCopyTests(unittest.TestCase):
         with self.assertRaises(Exception):
             p.finish(self.evidence)
 
+    @unittest.skipUnless(os.name == 'nt', 'Windows no-replace publication API only')
+    def test_conventional_same_parent_happy_preserves_staged_targets_and_exact_map(self):
+        folder = self.same_parent()
+        paths = [self.source, self.host, *folder.glob('*.dwg')]
+        before = {file: p.r.digest(file) for file in paths}
+        maps = copy.deepcopy(self.spec['mappings'])
+        request = self.fake()
+        self.assertEqual([m['new_path'] for m in request['mappings']], [m['new_path'] for m in maps])
+        self.assertEqual(p.finish(self.evidence)['changed_count'], 3)
+        self.assertEqual(before, {file: p.r.digest(file) for file in paths})
+        self.assertEqual(self.spec['mappings'], maps)
+
+    def test_same_parent_existing_output_and_evidence_alias_rejected_before_creation(self):
+        self.same_parent()
+        output = self.issue / self.spec['output_path'];output.write_bytes(b'protected')
+        with self.assertRaisesRegex(p.PrepareError, 'prepare_output_collision_or_overlap'): self.pre()
+        self.assertFalse(self.evidence.exists());self.assertEqual(output.read_bytes(), b'protected')
+        output.unlink()
+        with self.assertRaisesRegex(p.PrepareError, 'prepare_evidence_collision_or_overlap'):
+            p.preflight(self.spec, self.host, p.r.digest(self.host), output.parent / 'evidence')
+        self.assertFalse((output.parent / 'evidence').exists())
+
+    def test_same_parent_hardlink_target_rejected(self):
+        folder = self.same_parent();alias = self.root / 'alias'
+        os.link(folder / '0.dwg', alias)
+        with self.assertRaisesRegex(p.PrepareError, 'prepare_non_regular_or_hardlink'): self.pre()
+        self.assertFalse(self.evidence.exists())
+
+    @unittest.skipUnless(os.name == 'nt', 'Windows junction test')
+    def test_same_parent_junction_rejected_before_creation(self):
+        folder = self.same_parent();alias = folder.parent / 'linked'
+        result = subprocess.run(['cmd', '/c', 'mklink', '/J', str(alias), str(folder)], capture_output=True)
+        if result.returncode: self.skipTest('junction privilege unavailable')
+        self.spec['mappings'][0]['new_path'] = r'.\linked\0.dwg'
+        with self.assertRaisesRegex(p.PrepareError, 'prepare_reparse_point'): self.pre()
+        self.assertFalse(self.evidence.exists());alias.rmdir()
+
+    def test_same_parent_source_root_and_host_target_alias_rejected(self):
+        self.same_parent()
+        original = copy.deepcopy(self.spec)
+        snapshot = self.issue / 'snapshot';snapshot.mkdir()
+        (snapshot / self.source.name).write_bytes(self.source.read_bytes())
+        self.spec.update(source_root=str(self.issue), source_path='snapshot/' + self.source.name)
+        with self.assertRaisesRegex(p.PrepareError, 'prepare_output_collision_or_overlap'): self.pre()
+        self.spec = original
+        self.host = self.issue / 'safe.dwg';self.host.write_bytes(b'target0')
+        self.spec['mappings'][0].update(new_path=r'..\safe.dwg', target_sha256=p.r.digest(self.host))
+        with self.assertRaisesRegex(p.PrepareError, 'prepare_evidence_collision_or_overlap'): self.pre()
+        self.assertFalse(self.evidence.exists())
+
+    def test_managed_failure_evidence_blocks_even_a_fake_success_marker(self):
+        self.fake()
+        p.write_new(self.evidence / 'native.failure.json', {'status': 'failed', 'phase': 'save_as'})
+        with self.assertRaisesRegex(p.PrepareError, 'prepare_native_failure_recorded'): p.finish(self.evidence)
+        self.assert_not_published()
+
     def test_invalid_specs_fail_before_creating_evidence(self):
         original = copy.deepcopy(self.spec)
         cases = [lambda s: s.update(source_sha256='0'*64),
@@ -106,11 +170,11 @@ class PrepareCopyTests(unittest.TestCase):
                 with self.assertRaises(Exception): self.pre()
                 self.assertFalse(self.evidence.exists())
 
-    def test_missing_target_and_existing_output_directory(self):
+    def test_missing_target_and_non_directory_output_parent(self):
         target = self.issue / 'refs/nested/0.dwg';target.unlink()
         with self.assertRaises(Exception): self.pre()
         self.assertFalse(self.evidence.exists())
-        target.write_bytes(b'target0');(self.issue / 'prepared').mkdir()
+        target.write_bytes(b'target0');(self.issue / 'prepared').write_bytes(b'not a directory')
         with self.assertRaises(Exception): self.pre()
         self.assertFalse(self.evidence.exists())
 
@@ -201,8 +265,12 @@ class PrepareCopyTests(unittest.TestCase):
         self.assertEqual(code.count('.SaveAs('), 1)
         self.assertNotIn('DocumentManager.Open(', code)
         self.assertNotIn('.ResolveXrefs(', code)
-        self.assertLess(code.index('Verify(saved, expected)'), code.index('NewText(q.marker'))
+        self.assertLess(code.index('Verify(saved, expected)'), code.index('File.Move(q.marker'))
         self.assertIn('while (true) System.Threading.Thread.Sleep', code)
+        self.assertIn('catch (System.Exception error)', code)
+        self.assertIn('NewText(failurePath, json.Serialize', code)
+        self.assertIn('exception_type = error.GetType().FullName', code)
+        self.assertIn('throw; // Do not swallow', code)
 
 
 if __name__ == '__main__':

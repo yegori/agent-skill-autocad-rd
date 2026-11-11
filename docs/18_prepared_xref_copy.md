@@ -16,12 +16,15 @@ ControlledRead/ControlledPlot/dependency reader. Нужны отдельные �
   Source читается из отдельного физического snapshot с полным именем; source не становится документом.
 - Caller заранее создаёт **отдельную NEW issue tree**, явно staging dependencies/signature assets, например
   через [stage_inputs.py](16_staging_plot.md). Tool ничего не ищет/не докопирует и не угадывает по basename.
-  `issue_root` — выбранное дерево, не старая выдача; родитель final output должен ещё не существовать.
+  `issue_root` — выбранное private NEW дерево, не старая выдача; родитель final DWG может уже существовать
+  после staging supplied targets/signature assets. Например `dwg/Внешние_ссылки/…` рядом с будущей `dwg/001 Example.dwg`.
 - Source root отделён от нового output. Evidence — новый ASCII-каталог, отделённый от issue/source/host/package.
   Нельзя перезаписывать ни output, ни evidence, ни источник, ни старые снимки. Нет `-Apply`, cleanup/retry.
   Partial directories сохраняются; следующая попытка — новые пути, только после разбора отказа.
 - Output filename **полностью совпадает** с source filename, включая кириллицу/пробелы. Пример ниже fake.
-  Новый output parent и `_pending_<uuid>` создаются эксклюзивно; pending DWG сохраняет полное имя.
+  Только exact output, evidence и `_pending_<uuid>` должны быть NEW/exclusive; существующий non-reparse
+  output parent разрешён, supplied hashed targets могут быть его потомками. Pending DWG сохраняет полное имя.
+  Source-root/package/host/evidence overlaps, links/aliases и существующий exact output по-прежнему запрещены.
   Windows `os.rename` без replace публикует DWG только после проверок и собственного Job cleanup.
 - New paths — Windows relative strings (`\\` в JSON); внутренние произвольные subfolders допустимы.
   `..` допустим только пока **каждый шаг** остаётся внутри issue. Разрешение относительно FINAL referring DWG,
@@ -43,11 +46,11 @@ ControlledRead/ControlledPlot/dependency reader. Нужны отдельные �
   "source_path": "001 Example.dwg",
   "source_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
   "issue_root": "D:/scratch/new-issue",
-  "output_path": "prepared/001 Example.dwg",
+  "output_path": "dwg/001 Example.dwg",
   "mappings": [
-    {"handle":"A1", "name":"Frame", "old_path":"Z:\\old\\frame.dwg", "new_path":"..\\refs\\frame.dwg", "target_sha256":"0000000000000000000000000000000000000000000000000000000000000000"},
-    {"handle":"A2", "name":"Survey", "old_path":"Z:\\old\\survey.dwg", "new_path":"..\\refs\\nested\\survey.dwg", "target_sha256":"0000000000000000000000000000000000000000000000000000000000000000"},
-    {"handle":"A3", "name":"Plan", "old_path":"Z:\\old\\plan.dwg", "new_path":"..\\refs\\plan.dwg", "target_sha256":"0000000000000000000000000000000000000000000000000000000000000000"}
+    {"handle":"A1", "name":"Frame", "old_path":"Z:\\old\\frame.dwg", "new_path":".\\Внешние_ссылки\\frame.dwg", "target_sha256":"0000000000000000000000000000000000000000000000000000000000000000"},
+    {"handle":"A2", "name":"Survey", "old_path":"Z:\\old\\survey.dwg", "new_path":".\\Внешние_ссылки\\nested\\survey.dwg", "target_sha256":"0000000000000000000000000000000000000000000000000000000000000000"},
+    {"handle":"A3", "name":"Plan", "old_path":"Z:\\old\\plan.dwg", "new_path":".\\Внешние_ссылки\\plan.dwg", "target_sha256":"0000000000000000000000000000000000000000000000000000000000000000"}
   ]
 }
 ```
@@ -90,6 +93,12 @@ timeout/неопределённая cleanup → отказ. Nullable live exit 
 actual paths/count=3/output SHA, exclusive output, затем no-replace rename и closed `prepared.json`.
 Failures/partial evidence не удаляются; если ошибка после DWG publish — artifact всё равно не принят без report.
 `binding.json`, `request.json`, `build.txt`, SCR, `owned.json`, native JSON/marker, prepared/failure reports разделены.
+Managed exceptions отдельно сохраняются через CreateNew в `native.failure.json` рядом с request: phase,
+exception_type/message/status=failed; исключение повторно выбрасывается, success marker не создаётся после ошибки.
+Если запись failure evidence не удалась, AggregateException сохраняет исходную и reporting ошибки, без overwrite/retry.
+Marker сначала полностью закрывается в `native.complete.pending`, затем no-overwrite File.Move публикует ALLDONE;
+ошибка записи/закрытия оставляет только partial evidence. `finish` отвергает native.failure даже при чужом/fake marker.
+Owner timeout/cleanup state остаётся отдельно в owned/failure JSON; shared process helper/console capture не менялись.
 
 **SaveAs может пересериализовать proxy/СПДС, поля и другое содержимое.** Source/output hashes — provenance,
 не семантическая идентичность, сохранность proxy-графики или качество. Prepared candidate — не original-as-is,
@@ -110,13 +119,17 @@ Legacy `xrefs.ps1` строит paths по basename, чистит generic workdi
 ```text
 python -I -m unittest discover -s scripts -p test_prepare_xref_copy.py -v
 pwsh -NoProfile -File scripts/test_prepare_xref_copy.ps1
+pwsh -NoProfile -File scripts/test_prepare_xref_failure.ps1
 ```
 
-Python: happy explicit3 fake result, stale source/target SHA, duplicate/no-op/path aliases, missing/escape,
-hardlinks, output collision, source/host/snapshot drift, invalid native paths/count/hash, marker/early exit/cleanup.
-Symlink test skipped явно, если ОС не даёт privilege. PS: 13 fake-wrapper cases, fail-before stale SHA (0 starts),
-fake native identities, wrong counts/paths/drift, marker/early exit/timeout/cleanup; fake compiler проверяет source,
-reference **и out** native Join-Path arguments. Fake identity model/static C# assertions НЕ исполняют Autodesk API.
+Python: 19 tests, включая conventional `.\Внешние_ссылки\…` same-parent happy (точные пути/targets неизменны),
+contained `..` happy, source/target SHA, duplicate/no-op/path aliases, missing/escape, hardlinks/junctions,
+output collision и source/host/evidence aliases, snapshot drift, invalid native counts/hash, managed failure/marker/lifetime.
+Symlink test skipped явно, если ОС не даёт privilege. PS: 17 fake-wrapper cases, включая same-parent happy,
+output collision/hardlink fail-before и separate native error/owner timeout; fake compiler проверяет source,
+reference **и out** native Join-Path arguments. Дополнительно 4 exception tests компилируют actual C# source
+только с inert API stubs: read/SaveAs/marker error и no-overwrite предыдущей failure evidence, rethrow без marker.
+Это STUB compile/managed-handler execution, НЕ SDK ABI/native acceptance; Autodesk API не загружается.
 
 Перед native — настоящая SDK compile без запуска CAD, затем три **отдельно допущенных последовательных** шага:
 1. Prepare одну NEW copy с private exact3 map: protected/source/snapshot/environment hashes, native reopened table,

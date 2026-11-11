@@ -60,6 +60,10 @@ function Invoke-OwnedTxtfixProcess {
  $pos=@('(setq rd_prepare_sl (getvar "SECURELOAD"))','(setvar "SECURELOAD" 0)',"(vl-catch-all-apply '(lambda () (command",'(setvar "SECURELOAD" rd_prepare_sl)','(if (and (not (vl-catch-all-error-p rd_prepare_load)) (= (getvar "SECURELOAD") rd_prepare_sl))','(command "RDPREPAREXREFCOPY")') | ForEach-Object {$lisp.IndexOf($_)}
  $prev=-1;foreach($i in $pos){if($i -le $prev){throw 'load_restore_order'};$prev=$i}
  $mode=$env:RDCI_PREPARE_FAKE_MODE
+ if($mode -eq 'nativefailure') {
+   @{schema_version=1;kind='explicit_xref_copy_failure';status='failed';phase='save_as';exception_type='System.InvalidOperationException';message='synthetic API failure'} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path (Split-Path $q.report) 'native.failure.json')
+   return [pscustomobject]@{AllDone=$false;TimedOut=$true;RootExitedBeforeStop=$false;RootExitCodeBeforeStop=$null;Terminated=$true;ElapsedSeconds=0.1}
+ }
  # Synthetic native fail-before identity model; actual C# identities still require real acceptance.
  foreach($m in $q.mappings){
    $expected=[Convert]::ToInt32($m.handle,16)-1
@@ -84,14 +88,20 @@ function Invoke-OwnedTxtfixProcess {
     $hostFile=Join-Path $root 'host/safe.dwg';[IO.File]::WriteAllText($hostFile,'safe host')
     $hostSha=(Get-FileHash -LiteralPath $hostFile).Hash.ToLowerInvariant()
     $passed=0
-    foreach($mode in @('happy','count','path','target','source','marker','early','timeout','uncertain','stalehandle','stalename','staleold','preflight')) {
+    foreach($mode in @('happy','sameparent','outputcollision','hardlink','nativefailure','count','path','target','source','marker','early','timeout','uncertain','stalehandle','stalename','staleold','preflight')) {
         $case=Join-Path $root $mode
         New-Item -ItemType Directory -Path "$case/sources","$case/issue/refs" | Out-Null
         $source=Join-Path $case 'sources/001 sample.dwg';[IO.File]::WriteAllText($source,'synthetic source')
+        $sameParent = $mode -in @('sameparent','outputcollision','hardlink')
+        $targetDir = if($sameParent){Join-Path $case 'issue/prepared/Внешние_ссылки'}else{Join-Path $case 'issue/refs'}
+        if($sameParent){New-Item -ItemType Directory -Path $targetDir | Out-Null}
         $maps=@(0..2 | ForEach-Object {
-            $target=Join-Path $case "issue/refs/$_.dwg";[IO.File]::WriteAllText($target,"target$_")
-            @{handle=[string]($_+1);name="ref$_";old_path="Z:\old-missing$_.dwg";new_path="..\refs\$_.dwg";target_sha256=(Get-FileHash -LiteralPath $target).Hash.ToLowerInvariant()}
+            $target=Join-Path $targetDir "$_.dwg";[IO.File]::WriteAllText($target,"target$_")
+            $newPath=if($sameParent){".\Внешние_ссылки\$_.dwg"}else{"..\refs\$_.dwg"}
+            @{handle=[string]($_+1);name="ref$_";old_path="Z:\old-missing$_.dwg";new_path=$newPath;target_sha256=(Get-FileHash -LiteralPath $target).Hash.ToLowerInvariant()}
         })
+        if($mode -eq 'outputcollision'){[IO.File]::WriteAllText((Join-Path $case 'issue/prepared/001 sample.dwg'),'protected existing')}
+        if($mode -eq 'hardlink'){New-Item -ItemType HardLink -Path (Join-Path $case 'alias.dwg') -Target (Join-Path $targetDir '0.dwg') | Out-Null}
         $spec=@{schema_version=1;source_root=(Join-Path $case 'sources');source_path='001 sample.dwg';source_sha256=(Get-FileHash -LiteralPath $source).Hash.ToLowerInvariant();issue_root=(Join-Path $case 'issue');output_path='prepared/001 sample.dwg';mappings=$maps}
         if($mode -eq 'stalehandle'){$maps[0].handle='A'}
         if($mode -eq 'stalename'){$maps[0].name='different'}
@@ -103,22 +113,35 @@ function Invoke-OwnedTxtfixProcess {
         try { & (Join-Path $fakePackage 'toolkit/prepare_xref_copy.ps1') -Spec $specFile -HostDwg $hostFile -HostSha256 $hostSha -EvidenceDir $evidence -TimeoutSec 2 }
         catch {$failed=$true;"EXPECTED failure [$mode]: $($_.Exception.Message)"}
         $output=Join-Path $case 'issue/prepared/001 sample.dwg'
-        if($mode -eq 'happy') {
+        if($mode -in @('happy','sameparent')) {
             if($failed -or -not (Test-Path -LiteralPath "$evidence/prepared.json") -or -not (Test-Path -LiteralPath $output)){throw 'happy_failed'}
             $report=Get-Content -LiteralPath "$evidence/prepared.json" -Raw | ConvertFrom-Json
             if($null -ne $report.exit_code -or -not $report.cleanup_verified -or $report.dependency_complete -or $report.publication_approved){throw 'false_claim'}
         } else {
-            if(-not $failed -or (Test-Path -LiteralPath "$evidence/prepared.json") -or (Test-Path -LiteralPath $output)){throw "failure_published_$mode"}
-            if($mode -ne 'preflight' -and -not (Test-Path -LiteralPath "$evidence/failure.json")){throw 'failure_evidence_missing'}
+            if(-not $failed -or (Test-Path -LiteralPath "$evidence/prepared.json") -or ((Test-Path -LiteralPath $output) -and $mode -ne 'outputcollision')){throw "failure_published_$mode"}
+            if($mode -eq 'outputcollision' -and [IO.File]::ReadAllText($output) -ne 'protected existing'){throw 'collision_overwritten'}
+            if($mode -notin @('preflight','outputcollision','hardlink') -and -not (Test-Path -LiteralPath "$evidence/failure.json")){throw 'failure_evidence_missing'}
+            if($mode -in @('outputcollision','hardlink') -and (Test-Path -LiteralPath $evidence)){throw 'alias_or_collision_reached_native'}
         }
         if($env:RDCI_PREPARE_REQUEST -ne 'preserve-me' -or [IO.File]::ReadAllText($source) -ne 'synthetic source'){throw 'original_or_env_mutated'}
+        if($mode -eq 'sameparent') {
+            $actual=Get-Content -LiteralPath "$evidence/request.json" -Raw | ConvertFrom-Json
+            for($i=0;$i -lt 3;$i++){
+                if($actual.mappings[$i].new_path -ne ".\Внешние_ссылки\$i.dwg" -or (Get-FileHash -LiteralPath (Join-Path $targetDir "$i.dwg")).Hash.ToLowerInvariant() -ne $maps[$i].target_sha256){throw 'sameparent_mapping_or_target_changed'}
+            }
+        }
+        if($mode -eq 'nativefailure') {
+            $nativeError=Get-Content -LiteralPath "$evidence/native.failure.json" -Raw | ConvertFrom-Json
+            $failure=Get-Content -LiteralPath "$evidence/failure.json" -Raw | ConvertFrom-Json
+            if($nativeError.phase -ne 'save_as' -or -not $failure.owned.TimedOut -or (Test-Path -LiteralPath "$evidence/native.complete")){throw 'native_error_conflated_or_success_marker'}
+        }
         if($mode -eq 'early') {
             $failure=Get-Content -LiteralPath "$evidence/failure.json" -Raw | ConvertFrom-Json
             if($failure.owned.RootExitCodeBeforeStop -ne 0 -or -not $failure.owned.RootExitedBeforeStop){throw 'exit_observation_lost'}
         }
         $passed++;"OK: $mode"
     }
-    if(([IO.File]::ReadAllLines($env:RDCI_PREPARE_FAKE_COUNT)).Count -ne 12){throw 'preflight_started_native'}
+    if(([IO.File]::ReadAllLines($env:RDCI_PREPARE_FAKE_COUNT)).Count -ne 14){throw 'preflight_started_native'}
     "PASS: $passed fake-wrapper cases; source/reference/out compiler arguments are native existing paths"
 } finally {
     $env:WINDIR=$oldWindir;$env:RDCI_PREPARE_REQUEST=$oldRequest;$env:RDCI_PREPARE_FAKE_MODE=$oldMode;$env:RDCI_PREPARE_FAKE_COUNT=$oldCount
