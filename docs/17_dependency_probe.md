@@ -2,7 +2,20 @@
 
 08–10.11.2026. Продолжение explicit staging (`16_staging_plot.md`). Не включать печать/общий consumer по этой заготовке.
 
-## Продолжение native приёмки (11.11, runtime a655e22 без изменений)
+## Первый metadata-проход выбранных печатных sources завершён (11.11)
+
+Ещё два первых genuine Pi/single-CAD read без изменения runtime: **4.09 / 3.07 s**, оба needs_input,
+root alive/cleanup verified/exit_code=null/outer Job empty. Observations 20000/3961, один capped;
+37/17 resource questions сохранены, independent conversion, external bindings=0. Paper A1/A4.
+В первом source наблюдается paper xref с escaping path: одноимённый supplied DWG **не** стал binding.
+Во втором exact stamp path/SHA подтверждены. Native layout names не проверка печатного штампа.
+Теперь accepted metadata есть для **всех восьми выбранных печатных DWG candidates**, плюс отдельный stamp.
+ОД остаётся legacy table-only accepted subset исторического failed parent job, сам failed job не переоценён.
+Всего восемь bounded usage sources; пять capped. Нет claim полной closure/видимости/инженерной проверки/печати.
+30 originals/snapshot, 28 Plotters/configs прежние, обе tasks удалены, pause/idle/ready; no CAD/Node.
+Private locator **`dependency_final_sheet_reads`**, сводная manifest-bound first-read map вне Git.
+
+## Предыдущая тройка native приёмки (11.11, runtime a655e22 без изменений)
 
 Три следующих первых чтения основных sources, отдельные genuine Pi/serial single-CAD в disconnected same-user
 session: **12.21 / 3.09 / 7.14 s**, root alive/cleanup verified/exit_code=null/outer Job empty. Все needs_input.

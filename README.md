@@ -47,7 +47,7 @@ claude plugin install rd-ci@rd-ci-arkhyz
 | `docs/12_arkhyz_test_cases.md` | Эталонные ошибки для проверки инструментов |
 | `docs/14_stage_plan.md`, `toolkit/plan_stages.py` | Черновой PDF-план из явного inventory, не executor/автоматическое разрешение |
 | `docs/15_resource_inventory.md`, `toolkit/inspect_resources.ps1`, `toolkit/resource_inventory.py` | До трёх read-only probe, raw evidence/SHA/timings → проверенный консервативный draft, не печать |
-| `docs/17_dependency_probe.md`, `toolkit/inspect_dependencies.ps1` | Strict `--issue-only`, 23 unit + 4 fake-wrapper cases; bounded usage принят в 6 genuine single-CAD reads двух серий/needs_input. Четыре capped по 20000 observations; источник прежних VLA warnings не установлен, не closure/печать |
+| `docs/17_dependency_probe.md`, `toolkit/inspect_dependencies.ps1` | Strict `--issue-only`, 23 unit + 4 fake-wrapper cases; bounded usage принят в 8 genuine single-CAD reads/needs_input, пять capped. Первый metadata-проход выбранных печатных sources завершён (ОД отдельно legacy); источник прежних VLA warnings не установлен, не closure/печать |
 | `docs/16_staging_plot.md`, `toolkit/stage_inputs.py` | Explicit-only stage/snapshot/working/environment hashes и тестовый ControlledPlot; не discovery/авторизация/reuse |
 | `docs/PROJECT_CLAUDE_TEMPLATE.md` | Шаблон инструкции для папки объекта |
 | `docs/06_decisions.md` | Решения по пакету и границе с сервисом |
