@@ -5,6 +5,15 @@ function Assert-NoCoverWordProcess {
     try { if ($foreign.Count) { throw 'existing_winword_refused' } }
     finally { foreach ($item in $foreign) { $item.Dispose() } }
 }
+function Get-CoverReadinessFailureEvidence($Owner, [scriptblock]$Capture) {
+    # One class-only snapshot BEFORE own stop. Missing diagnostics never replace the primary failure.
+    try {
+        $Owner.Guard()
+        $snapshot = & $Capture $Owner.OriginalProcessId
+        $Owner.Guard()
+        return @{snapshot=$snapshot}
+    } catch { return @{error='readiness_capture_unavailable'} }
+}
 function Invoke-CoverSession {
     param($Owner, [scriptblock]$FindPane, [scriptblock]$Bind, [scriptblock]$WindowPid,
           [scriptblock]$Track, [scriptblock]$Document, [int]$PaneTimeoutSec)

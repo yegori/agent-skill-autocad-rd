@@ -77,19 +77,42 @@ ACL isolation от других пользователей, reservation буду
 `cover_native_host.ps1` не вызывает CoCreate/Word.Application factory/GetActiveObject и не принимает
 broker-created PID. До запуска: интерактивная Windows STA/session проверка, консервативный отказ при
 любом WINWORD/ошибке enumeration, повторная проверка binary/snapshot SHA и private output absence.
-Далее ровно прямой approved WINWORD `/x /a /q`, **без source на CLI**, через прежний suspended
+Далее ровно прямой approved WINWORD `/w /a /q`, **без source на CLI**, через прежний suspended
 `OwnedCadProcess.Start`: private noninheritable kill-on-close Job до ResumeThread, original held handle.
 
 Единственный shared-source delta — read-only `OriginalProcessId`, однократно из CreateProcessInfo
-до assign/resume; CAD Start/Stop/Dispose/lifetime не менялись. Shared process regressions — координатору,
-не новые CAD reads. PID используется только для проверки HWND, никогда для kill/late ownership adoption.
+до assign/resume; CAD Start/Stop/Dispose/lifetime не менялись. Shared process/OriginalPID host regressions
+ранее проверены координатором; новый startup delta их не меняет, не повторять kernel/CAD reads.
+PID используется только для проверки HWND, никогда для kill/late ownership adoption.
 
 Bounded EnumWindows/child search выбирает `_WwG` только original PID. OBJID_NATIVEOM/IDispatch bind
 только этому pane; возвращённый Application.Hwnd тоже должен принадлежать original STILL-LIVE root.
 Root.Guard перед OM/settings/Open/операциями; root handoff/early exit (даже 0), foreign HWND,
 непоявление pane или недоступный OM — failed, никакого fallback на другой процесс.
-`/x /a /q` намеренно оставляет startup blank/pane: `/Automation` не используется. Единственный startup
-blank с Path='' закрывается только внутри проверенного own instance; другие startup docs — отказ.
+`/w` вместо `/x` явно запрашивает отдельный instance **с новым blank**, `/a` и `/q` сохранены;
+`/Automation`, shell/DDE/factory/ROT, source или synthetic seed на argv не используются.
+Это кандидат startup policy, не доказательство, что switches исполнены/прежняя pane-причина исправлена.
+Один настоящий `/x /a /q` trial завершился pane timeout при живом root и verified own cleanup;
+дерево тогда не записано, причина **UNKNOWN**, не доказаны StartScreen/licensing/modal/desktop/enum причины.
+Deadlines остаются 30/120 секунд, без blind repeat старого startup.
+
+EnumWindows false без найденного pane/контролируемой остановки — явная API ошибка (даже lastError=0),
+callback-found — не ошибка. GetPID/GetClassName failures не превращаются в pane timeout. Возврат
+EnumChildWindows документирован как unused: его не трактуем как success/last-error proof; отсутствие
+callbacks не доказывает полноту child tree или причину отсутствия pane. Один поиск ограничен 2048 callbacks/
+100 ms; превышение — failed/owned_window_scan_limited, не скрытая timeout-причина.
+На readiness failure до own stop — одна root-PID-only class/visibility запись, guard до/после capture:
+не более 16 records, class до 64 chars, 512 callbacks/250 ms. Только HWND/top-or-child/class/visibility;
+без captions/text/UIA/screenshots/foreign-window metadata. Limited/error/missing diagnostic не разрешает
+success и не заменяет primary failure; старые деревья/состояния не восстанавливаются задним числом.
+
+Ноль startup docs не требует Close; при одном закрыть можно только проверенный own свежий blank.
+Path='' **недостаточно**: Saved=true, Type=document, не ReadOnly/protected; main range 0..1/StoryType=main,
+по одному character/paragraph/section/story; ноль fields/shapes/inline images/tables/frames/content controls/
+hyperlinks/comments/revisions/notes/variables, нет next story. Это metadata-only guard без чтения Text/Name;
+неизвестная metadata/unsaved recovered/nonempty/другие stories — отказ **до Close и source Open**.
+Действительность этих Word properties на настоящем `/w` blank ещё требует native проверки; ограничения
+не ослаблять ради smoke. Macro/link guards по-прежнему ставятся до любого approved snapshot Open.
 
 В own instance до Open: AutomationSecurity=3, DisplayAlerts=0, Options UpdateLinksAtOpen,
 UpdateFieldsAtPrint, UpdateLinksAtPrint, SaveNormalPrompt, ConfirmConversions=false; значения
@@ -131,6 +154,10 @@ pwsh -NoProfile -File scripts/test_cover_document.ps1
 pwsh -NoProfile -File scripts/test_cover_owner.ps1
 ```
 
+Для изменённого startup/window/blank guard — отдельно
+`pwsh -NoProfile -File scripts/test_cover_pane_startup.ps1`: только inert Win32/Word/process stubs,
+без настоящего EnumWindows/NativeOM/Word. Не повторять неизменённые kernel/UTF-8/CAD suites.
+
 Для узкой transport-регрессии без любых native/ownership suites:
 `python -I -m unittest discover -s scripts -p test_cover_utf8_cli.py -v` — настоящие UTF-8 byte pipes,
 Cyrillic filenames, legacy CP1251 stdin только в isolated test child, PS roundtrip, invalid UTF-8/duplicates;
@@ -142,6 +169,6 @@ watchdog/session ownership gates и timeout uncertainty. Три реальные
 Windows privilege; mocked reparse отдельно. Никакой Word/COM/native process activation в этих тестах.
 Fake Open boundary НЕ моделирует IDispatch optional Missing marshaling; C# compile-only не native read.
 Настоящие HWND/_WwG/OM/Open(optional args)/SaveAs/Export/Close/release/Job-family acceptance ещё нужны.
-Координатор: shared owner regression → отдельный approved passthrough draft в NEW location →
+Координатор: review changed startup/window/blank policy → fresh UUID/approved passthrough draft в NEW location →
 provenance/cleanup audit → визуальная/text/requisites/headers/images/fields/layout QA. Никаких
 инженерных значений/шифров/дат/ревизий автоматически не исправлять, B/В конфликт не нормализовать.

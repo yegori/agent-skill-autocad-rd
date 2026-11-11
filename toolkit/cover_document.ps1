@@ -7,6 +7,24 @@ function Open-CoverSnapshot($Documents, [string]$Snapshot) {
         'not-a-supplied-password', 'not-a-supplied-password', 0, $missing,
         $false, $false, $missing, $true, $missing)
 }
+function Assert-CoverStartupBlank($Blank, [scriptblock]$Track) {
+    # Metadata only: Path='' alone also describes recovered/unsaved content. Never read Text/Name.
+    if ($Blank.Path -ne '' -or $Blank.Saved -ne $true -or $Blank.Type -ne 0 -or
+        $Blank.ReadOnly -ne $false -or $Blank.ProtectionType -ne -1) { throw 'startup_document_not_fresh_blank' }
+    $content = & $Track $Blank.Content
+    if ($content.Start -ne 0 -or $content.End -ne 1 -or $content.StoryType -ne 1) { throw 'startup_document_not_fresh_blank' }
+    foreach ($key in @('Characters','Paragraphs','Sections','StoryRanges')) {
+        $collection = & $Track $Blank.$key
+        if ($collection.Count -ne 1) { throw 'startup_document_not_fresh_blank' }
+    }
+    foreach ($key in @('Fields','Shapes','InlineShapes','Tables','Frames','ContentControls','Hyperlinks',
+                       'Comments','Revisions','Footnotes','Endnotes','Variables')) {
+        $collection = & $Track $Blank.$key
+        if ($collection.Count -ne 0) { throw 'startup_document_not_fresh_blank' }
+    }
+    $next = & $Track $content.NextStoryRange
+    if ($null -ne $next) { throw 'startup_document_not_fresh_blank' }
+}
 function Invoke-CoverDocument {
     param($Application, $Config, [scriptblock]$Guard, [scriptblock]$Track, [scriptblock]$Phase)
     $document = $null; $closed = $false; $closeAttempted = $false; $saved = @{}; $optionSaved = @{}
@@ -23,11 +41,12 @@ function Invoke-CoverDocument {
             $options.UpdateFieldsAtPrint -or $options.UpdateLinksAtPrint) { throw 'security_options_not_applied' }
         & $Guard
         $documents = & $Track $Application.Documents
-        # Only our directly launched instance's sole unsaved startup blank is permitted.
+        # Zero docs need no close; at most one demonstrably fresh own startup blank may close.
         if ($documents.Count -gt 1) { throw 'unexpected_startup_documents' }
         if ($documents.Count -eq 1) {
             $blank = & $Track $documents.Item(1)
-            if ($blank.Path -ne '') { throw 'startup_document_not_blank' }
+            Assert-CoverStartupBlank $blank $Track
+            & $Guard
             $blank.Close(0)
         }
         $operation = 'open'; & $Guard; & $Phase 'open'

@@ -15,7 +15,8 @@ namespace AutocadRd {
   readonly string audit;
   CoverOwner(string executable, int timeoutSeconds, string auditPath) {
    audit = auditPath;
-   root = OwnedCadProcess.Start(executable, new string[] { "/x", "/a", "/q" });
+   // /w requests a separate instance WITH a blank; /a and /q retained. Native behavior unproved.
+   root = OwnedCadProcess.Start(executable, new string[] { "/w", "/a", "/q" });
    OriginalProcessId = root.OriginalProcessId;
    timer = new Timer(delegate(object unused) {
     lock(gate) {

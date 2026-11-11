@@ -47,6 +47,11 @@ try {
 } catch {
     $failure = $_; $result.error = $_.ToString()
     $result.failure_phase = if ($_.Exception.Data['cover_phase']) { $_.Exception.Data['cover_phase'] } else { $result.phase }
+    if ($owner -and $result.phase -eq 'pane') {
+        $diagnostic = Get-CoverReadinessFailureEvidence $owner {param($original) [AutocadRd.CoverWindow]::Capture($original)}
+        if ($diagnostic.ContainsKey('snapshot')) { $result.readiness_diagnostic = $diagnostic.snapshot }
+        else { $result.readiness_diagnostic_error = $diagnostic.error }
+    }
 }
 finally {
     # Release only references obtained through our verified original root. Never Word.Quit on a foreign instance.

@@ -13,7 +13,7 @@ namespace AutocadRd {
   public bool HasExited {get{return EarlyExit;}}
   public uint? ExitCode {get{return EarlyExit ? (uint?)0 : null;}}
   public static OwnedCadProcess Start(string exe,string[] args) {
-   if(args.Length!=3 || args[0]!="/x" || args[1]!="/a" || args[2]!="/q") throw new Exception("flags_wrong");
+   if(args.Length!=3 || args[0]!="/w" || args[1]!="/a" || args[2]!="/q") throw new Exception("flags_wrong");
    Starts++;return new OwnedCadProcess();
   }
   public bool Stop(){Stops++;if(Uncertain)throw new Exception("fake_cleanup_uncertain");return true;}
