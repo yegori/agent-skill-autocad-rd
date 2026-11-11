@@ -1,103 +1,137 @@
-# Обложка: промежуточный offline preflight, НЕ генерация
+# Обложка: offline preflight и guarded draft candidate
 
-`make_cover.ps1` больше не запускает старый небезопасный путь Word COM.
-Это намеренное несовместимое безопасное изменение default: обычный вызов после preflight
-завершается ошибкой `native_word_ownership_timeout_cleanup_not_implemented` **до COM**.
-Нет bypass-флага. Это отсутствие реализованного/принятого ownership/timeout пути,
-а НЕ доказательство отсутствия Word или невозможности автоматизации на этом ПК.
-Другие package/read/plot инструменты и `check_env.ps1` не изменены.
+**Native availability/качество DOC/PDF ещё не приняты.** `make_cover_draft.ps1` — новый явный
+кандидат для отдельного smoke/QA координатора, не готовая выдача/инженерная приёмка/full MVP.
+Старый `make_cover.ps1` остаётся safe-by-default: только `-PreflightOnly`, без него ошибка до COM;
+`-Force` всегда ошибка. Никакого bypass к прежнему безусловному Word COM нет.
+Другие read/plot/CAD инструменты и `check_env.ps1` не изменены.
 
-## CLI / API
+## Явный draft CLI
 
-PowerShell 7, установленный Python 3, стандартная библиотека; без установки модулей.
-`Template`, `Out`, `Pdf`, `Replace` сохранены; `Force` теперь всегда ошибка, не разрешение перезаписи.
-Новые обязательные данные: `TemplateSha256` и точная карта `ExpectedCounts` для каждого ключа `Replace`.
-Родители выходов должны уже существовать; один общий существующий родитель допустим.
-Расширение Out совпадает с Template (`.doc` или `.docx`); необязательный Pdf имеет `.pdf`.
-
-Generic пример **только preflight**, пути и SHA выбирает вызывающий:
+PowerShell 7, существующий Python 3 + установленный PyMuPDF. Никаких установок/fallback при
+отсутствии модулей. Windows, интерактивная не-session0 среда; внутренний host запускается `pwsh -STA`.
+Пути и SHA задаёт вызывающий; discovery шаблона/Word, выбор реквизитов и нормализация B/В отсутствуют.
+Родители DOC/PDF и WorkParent уже существуют. Общий родитель со staged siblings допустим.
 
 ```powershell
-# $template, $newDoc, $newPdf, $approvedTemplateSha — явные параметры вызывающего.
-& ./toolkit/make_cover.ps1 -Template $template -TemplateSha256 $approvedTemplateSha `
-  -Out $newDoc -Pdf $newPdf -Replace ([ordered]@{'TOKEN'='VALUE'}) `
-  -ExpectedCounts @{'TOKEN'=1} -PreflightOnly
+# Все переменные — явные approved inputs вызывающего; новые output paths.
+& ./toolkit/make_cover_draft.ps1 -Template $template -TemplateSha256 $approvedTemplateSha `
+  -Out $newDoc -Pdf $newPdf -WordExe $approvedWordExe -WordSha256 $approvedWordSha `
+  -WorkParent $existingPrivateWorkParent -ExpectedPages $expectedPageCount -PassthroughDraft
 
-# Явный черновой passthrough-контракт без выдуманных замен (экспорта пока нет):
-& ./toolkit/make_cover.ps1 -Template $template -TemplateSha256 $approvedTemplateSha `
-  -Out $newDoc -Pdf $newPdf -PassthroughDraft -PreflightOnly
+# После отдельной проверки применимости main-story-only replacement:
+& ./toolkit/make_cover_draft.ps1 -Template $template -TemplateSha256 $approvedTemplateSha `
+  -Out $newDoc -Pdf $newPdf -WordExe $approvedWordExe -WordSha256 $approvedWordSha `
+  -WorkParent $existingPrivateWorkParent -ExpectedPages $expectedPageCount `
+  -Replace ([ordered]@{'TOKEN'='VALUE'}) -ExpectedCounts @{'TOKEN'=1}
 ```
 
-`-PreflightOnly` возвращает JSON в stdout, код 0 только для контрактной/файловой проверки.
-Без него даже валидный контракт завершится ошибкой, файлов не создаст.
-`cover_preflight.py` — та же offline-функция `preflight(dict)`; CLI `python -I toolkit/cover_preflight.py`
-читает один JSON из stdin, возвращает JSON, код 0/1. Ключи: `template`, `template_sha256`, `out`,
-`pdf`, `replace`, `expected_counts`, `passthrough_draft`, `force`.
-Дубли JSON-ключей запрещены. Строки сравниваются буквально, без преобразования B/В или других реквизитов.
-PowerShell hashtable может сам объединить ключи, различающиеся только регистром: для таких контрактов
-использовать case-sensitive IDictionary либо прямой JSON API, не предполагать восстановление потерянных ключей.
+`ExpectedPages` обязателен, не выводится из шаблона. Default TimeoutSec=120 (1..3600),
+PaneTimeoutSec=30 (1..120, не больше общего timeout). Нет Force/overwrite/автовосстановления.
+PassthroughDraft явно несовместим с непустыми Replace/ExpectedCounts; не выдумывает замен/значений.
+Подписи не создаются; Word digital signatures в source запрещают генерацию, картинки-подписи
+не интерпретируются/не проверяются. Их допустимость/сохранность остаётся QA.
 
-## Что реально проверяется
+Python API `generate(request)` / CLI `python -I toolkit/cover_draft.py` с JSON stdin:
+`template`, `template_sha256`, `out`, `pdf`, `word_exe`, `word_sha256`, `work_parent`, `expected_pages`,
+`timeout_sec`, `pane_timeout_sec`, `replace`, `expected_counts`, `passthrough_draft`.
+Fake backend/validator инъекции существуют только в библиотечном unit-test API, не в CLI.
+Успех возвращает `draft_generated_pending_coordinator_qa`, `draft=true`, `native_accepted=false`,
+`engineering_approved=false`, private `run_dir`, hashes, native/count/cleanup evidence и published paths.
+Это НЕ orchestrator manifest `13_orchestrator.md`; координатор формирует его отдельно после своей QA.
+Ошибка — nonzero и failed; если private run уже создан, внутри него новый `result.json` и все partials.
 
-- Оба выходных пути: отсутствие DOC и PDF (включая dangling link); нормализованный alias с source запрещён.
-  Уже существующие файлы никогда не открываются на запись. Никаких Copy/Export/публикаций/очисток.
-- Source — непустой regular file, без hardlink (`st_nlink=1`); source и все существующие
-  компоненты source/output-parent без symlink/reparse. Родитель — directory, без автоматического создания.
-- Локальные literal paths; UNC/device-prefix, wildcard и Windows ADS запрещены.
-- Явный SHA256 source совпадает; identity/size/mtime и ctime в пределах одного метода stat/fstat
-  проверяются вокруг чтения. Windows path stat и handle fstat могут иметь разные ctime semantics:
-  их ctime не сравниваются между собой. Source читается как байты, не как документ.
-- Карты замен/ожидаемых количеств имеют одинаковые ключи; количества — положительные целые,
-  не bool; пустой контракт возможен только с явным `PassthroughDraft`, несовместимым с заменами.
+## Path/hash/staging/publication
 
-Это не защита от конкурентной подмены каталогов и не filesystem sandbox: нужен стабильный локальный
-каталог без параллельных писателей. План не резервирует output и не годится для последующего исполнения
-без повторной проверки/защищённого snapshot. Непустой `.docx` может быть вообще не Word-документом.
+- Обе output collision/source alias проверки до Word, повторно после snapshot и перед публикацией.
+  Локальные literal paths; UNC/device-prefix, ADS, wildcard, control/invalid Windows characters запрещены.
+  Drive-relative `C:foo`, trailing-dot/space components, NUL/CON/PRN/AUX/CONIN$/CONOUT$/CLOCK$ и
+  COMn/LPTn (консервативно также 0/multidigit/superscript variants, с расширениями) отвергаются **до записи**.
+- Source/approved WINWORD.EXE — непустые regular files, `st_nlink=1`; source и все существующие
+  source/output/work parent components без symlink/reparse. Никаких замен существующих файлов.
+- Явные SHA проверяются до запуска, после snapshot; source/snapshot/binary SHA повторно после native.
+  Identity/size/mtime/nlink проверяются вокруг hash, ctime — в пределах одного stat/fstat метода:
+  Windows pathname/handle ctime могут иметь разные semantics, их не сравниваем между собой.
+- Новый непредсказуемый private work subdir, snapshot с исходным полным именем, generated DOC с полным
+  requested output filename, отдельный PDF. Открывается только snapshot readonly/no MRU/no repair.
+  Никакого source Save/SaveAs, поиска соседних templates, удаления artifacts или cleanup чужих файлов.
+- После own Document.Close/release, **до** held Stop: source/snapshot SHA, непустые closed DOC/PDF,
+  PyMuPDF open/no password/точные expected pages/nonempty finite page rectangles и closed hashes;
+  root ещё жив. После verified-empty-Job Python повторяет проверки и сверяет closed hashes перед publication.
+- Publication — эксклюзивное `xb` создание, flush/fsync/hash; никогда не replace. Пара **не атомарна**:
+  collision/ошибка второй публикации оставляет первую, error содержит published/attempt paths;
+  ошибка копирования может оставить явно failed partial output. Ничего не удаляется/не перезаписывается,
+  после причины отказа выбирать NEW paths, не делать silent retry.
 
-## Чего НЕ реализовано / НЕ доказано
+Стабильная локальная папка без параллельной подмены каталогов обязательна. Нет filesystem sandbox,
+ACL isolation от других пользователей, reservation будущих paths или защиты от злонамеренной гонки.
+Непредсказуемый run dir не является доказательством OS security boundary.
 
-JSON всегда `status=preflight_only`, `execution_authorized=false`, `native_generation_available=false`,
-`draft=true`, `engineering_approved=false`. `observed` и `postflight` равны null.
-Это НЕ manifest выполненной генерации из `13_orchestrator.md`, не replacement evidence и не acceptance.
+## Ownership / bounded controlled completion
 
-Нет чтения/изменения **ни одной Word story**: main body, headers/footers, textbox/shape stories,
-fields и embedded content не проверены. Не обнаружены отсутствующие/лишние фактические совпадения;
-`ExpectedCounts` — только заявленное ожидание. Нет гарантии сохранения форматирования/полей/картинок.
-Нет Word startup/macros/link suppression, ownership, Document.Close/Word.Quit, release/timeout evidence.
-Поскольку COM вообще не активируется, эти риски не реализуются в этом пути, но и не объявляются решёнными.
-Нет DOC/PDF output, partial publication, PDF opening/pages/hash validation или visual/text/requisites QA.
-Не выдумываются шифр/дата/ревизия/подписи; существующие supplied values не нормализуются.
+`cover_native_host.ps1` не вызывает CoCreate/Word.Application factory/GetActiveObject и не принимает
+broker-created PID. До запуска: интерактивная Windows STA/session проверка, консервативный отказ при
+любом WINWORD/ошибке enumeration, повторная проверка binary/snapshot SHA и private output absence.
+Далее ровно прямой approved WINWORD `/x /a /q`, **без source на CLI**, через прежний suspended
+`OwnedCadProcess.Start`: private noninheritable kill-on-close Job до ResumeThread, original held handle.
 
-## Минимальный следующий native adapter (ещё не реализован)
+Единственный shared-source delta — read-only `OriginalProcessId`, однократно из CreateProcessInfo
+до assign/resume; CAD Start/Stop/Dispose/lifetime не менялись. Shared process regressions — координатору,
+не новые CAD reads. PID используется только для проверки HWND, никогда для kill/late ownership adoption.
 
-1. До COM консервативно отказать при любом существующем WINWORD; неопределённая process enumeration — отказ.
-   Создать одну новую COM application, проверить HWND → новый WINWORD и held process identity до Open.
-   Гонка чужого запуска/непроверяемая identity — uncertainty, не повод Quit чужого приложения.
-   Не использовать GetActiveObject, PID/name kill или глобальные Stop-Process/taskkill.
-2. Только в проверенном own instance до Documents.Open установить `AutomationSecurity=3`, отключить
-   external link updates/prompts, сохранить/безопасно восстановить свои изменённые options; release всех RCW.
-   Office startup/addins и OS ограничения честно отдельно: это не sandbox, macro setting не блокирует весь startup.
-3. Сохранить hash-bound snapshot и новые частные временные artifacts; сначала exact literal counts в явно
-   поддерживаемых stories, отказ при 0/duplicate/mismatch, затем replacements и postflight counts.
-   Не считать boolean Find.Execute доказательством. Явно отказаться от unsupported stories/fields,
-   не затирать Content.Text целиком и не обещать whole-document coverage.
-4. Только свой document Close и только проверенный own Word Quit; ошибки Open/Find/Export/Close,
-   зависание COM, uncertain ownership/cleanup — failed/uncertain. Нужна доказанная bounded strategy,
-   а не внешний Job, якобы содержащий broker-created COM server; ни чужие процессы, ни чужие файлы не чистить.
-5. Проверить непустой openable PDF/число ожидаемых страниц, source/output SHA, counts и cleanup evidence;
-   только после этого no-replace publication из частных temp. Повторно проверить оба output,
-   сохранить partials при ошибке (включая публикацию одного из пары), не делать silent retry/rollback overwrite.
-   Реальные макет/текст/реквизиты/headers/images смотрит координатор; результат всё ещё draft, не инженерная приёмка.
+Bounded EnumWindows/child search выбирает `_WwG` только original PID. OBJID_NATIVEOM/IDispatch bind
+только этому pane; возвращённый Application.Hwnd тоже должен принадлежать original STILL-LIVE root.
+Root.Guard перед OM/settings/Open/операциями; root handoff/early exit (даже 0), foreign HWND,
+непоявление pane или недоступный OM — failed, никакого fallback на другой процесс.
+`/x /a /q` намеренно оставляет startup blank/pane: `/Automation` не используется. Единственный startup
+blank с Path='' закрывается только внутри проверенного own instance; другие startup docs — отказ.
 
-## Offline tests
+В own instance до Open: AutomationSecurity=3, DisplayAlerts=0, Options UpdateLinksAtOpen,
+UpdateFieldsAtPrint, UpdateLinksAtPrint, SaveNormalPrompt, ConfirmConversions=false; значения
+сохраняются/восстанавливаются, ошибки не превращаются в успех. NoEncodingDialog, readonly,
+no MRU/repair/conversion, non-user password sentinels в Open; никаких Fields.Update/links fetching/signing.
+После close — release только полученных own RCW. **Word.Quit не вызывается**: новый controlled режим
+требует root живым после closed document/release, затем Stop только своего held Job и verified empty.
+Это не natural-exit success и не наследование CAD native acceptance.
+
+`CoverOwner` watchdog не вызывает COM, по общему deadline останавливает только свой Job, пишет audit;
+COM hang никогда не success. Если сам COM host не вернулся через timeout+90s, Python возвращает
+`native_host_timeout_cleanup_uncertain_no_publication`: не убивает PID/name, не публикует, не retries.
+Host может остаться зависшим; журнал watchdog сам по себе не заменяет returned cleanup evidence.
+До разбирательства координатора дальнейшие native операции запрещены. Не выдавать outer Job за
+контейнер Office COM/service brokers: контролируется лишь прямо созданный root/обычная Job family.
+Office startup/addins/OS/attached templates/linked content могут иметь внешние эффекты; `/a` и настройки
+не sandbox/сетевой firewall и не гарантия отсутствия всех возможных Office brokers/инициализаций.
+
+## Literal replacements / coverage
+
+Passthrough — ноль запрошенных/наблюдённых замен, без whole-story/text/field semantic acceptance.
+Replacements поддерживаются только в **main story**, без любых main fields/shapes/inline images и
+без содержательных/field-containing nonmain stories (headers/footers/textboxes/notes и т.п.).
+Неподдерживаемый случай — отказ, не молчаливый пропуск. Пустые не-field nonmain stories допустимы.
+Целые фразы, exact ordinal case-sensitive .NET text/range matching; caret, paragraph/table/field/control
+tokens отвергаются. No Word Find wildcard/caret interpretation; Find.Execute boolean не используется.
+Ожидаемые counts строго положительны/совпадают с actual pre-edit counts: missing/0/duplicate → failed.
+Substring/cascading maps запрещены до Word, реальные overlapping ranges — до edits. Исходные offsets,
+descending range edits, каждый Range.Text ordinal проверяется перед присваиванием; main Text целиком
+не перезаписывается. Exact expected main-text transform проверяется после edits и Save/Export.
+Это counts в own Word memory, не reopened DOC/render/PDF acceptance. Сохранность форматирования
+внутри заменённых ranges и layout/таблиц проверяет координатор; SaveAs сам может пересериализовать DOC.
+
+## Offline tests / remaining real gates
 
 ```text
-python -I -m unittest discover -s scripts -p test_cover_preflight.py -v
+python -I -m unittest discover -s scripts -p test_cover_*.py -v
+pwsh -NoProfile -File scripts/test_cover_document.ps1
+pwsh -NoProfile -File scripts/test_cover_owner.ps1
 ```
 
-Только synthetic bytes/files, mock reparse и PowerShell tripwires вместо COM/process commands.
-Покрыты DOC/PDF collisions, общий parent без записей, source alias/hardlink, SHA mismatch и mutation
-во время hash, link checks (реальные symlink cases могут skip без прав Windows), карты и literal Unicode,
-явный passthrough, отсутствие Force, default fail-before и offline-only stdout через wrapper.
-Это НЕ fake/native acceptance Open/Find/Export/Close: адаптера пока нет; эти failure tests,
-verified ownership/foreign Word enumeration, uncertain cleanup и no-replace partial publication остаются следующему шагу.
+Только synthetic files/PDF, inert backend/CLR Word/process stubs. Проверяются path/hash/maps,
+collisions/partial publication, actual PS document lifecycle/order/count/overlap failures, managed
+watchdog/session ownership gates и timeout uncertainty. Три реальные symlink cases могут skip без
+Windows privilege; mocked reparse отдельно. Никакой Word/COM/native process activation в этих тестах.
+Fake Open boundary НЕ моделирует IDispatch optional Missing marshaling; C# compile-only не native read.
+Настоящие HWND/_WwG/OM/Open(optional args)/SaveAs/Export/Close/release/Job-family acceptance ещё нужны.
+Координатор: shared owner regression → отдельный approved passthrough draft в NEW location →
+provenance/cleanup audit → визуальная/text/requisites/headers/images/fields/layout QA. Никаких
+инженерных значений/шифров/дат/ревизий автоматически не исправлять, B/В конфликт не нормализовать.

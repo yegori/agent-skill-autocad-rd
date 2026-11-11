@@ -175,7 +175,7 @@ try {
     -Pdf $env:COVER_PDF -TemplateSha256 $env:COVER_HASH -PassthroughDraft
   exit 3
 } catch {
-  if ($_.ToString() -notmatch '^native_word_ownership_timeout_cleanup_not_implemented') {
+  if ($_.ToString() -notmatch '^legacy_cover_native_disabled') {
     Write-Error $_; exit 4
   }
   Write-Output 'EXPECTED_NATIVE_FAIL_BEFORE'; exit 0

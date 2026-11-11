@@ -22,6 +22,6 @@ $request = @{
 $lines = $request | & python -I (Join-Path $PSScriptRoot 'cover_preflight.py')
 if ($LASTEXITCODE -ne 0) { throw "cover_preflight_failed: $($lines -join [Environment]::NewLine)" }
 if (-not $PreflightOnly) {
-    throw 'native_word_ownership_timeout_cleanup_not_implemented: no Word activated or outputs created; use -PreflightOnly for an offline contract/path check, not generation'
+    throw 'legacy_cover_native_disabled: no Word activated or outputs created; use -PreflightOnly for offline checks or the separately authorized make_cover_draft.ps1 candidate (native acceptance pending)'
 }
 $lines

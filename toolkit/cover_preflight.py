@@ -23,6 +23,20 @@ def _path(value: object) -> Path:
     # Local stable filesystem only; exclude devices, UNC, ADS and wildcard expansion.
     if value.startswith(("\\\\", "//")) or any(c in value for c in "*?\x00"):
         raise PreflightError("local_literal_path_required")
+    # Check original spelling BEFORE abspath can erase aliases such as 'bad.\\..'.
+    spelling = value.replace("\\", "/")
+    if re.match(r"^[A-Za-z]:($|[^/])", spelling):
+        raise PreflightError("drive_relative_forbidden")
+    for component in spelling.split("/"):
+        if component in ("", ".", "..") or re.fullmatch(r"[A-Za-z]:", component):
+            continue
+        if component.endswith((".", " ")):
+            raise PreflightError("windows_component_alias_forbidden")
+        stem = component.split(".", 1)[0].rstrip(" .").upper()
+        if re.fullmatch(r"CON|PRN|AUX|NUL|CLOCK\$|CONIN\$|CONOUT\$|COM[0-9¹²³]+|LPT[0-9¹²³]+", stem):
+            raise PreflightError("windows_device_name_forbidden")
+        if any(c in component for c in '<>"|:') or any(ord(c) < 32 for c in component):
+            raise PreflightError("windows_component_forbidden")
     path = Path(os.path.abspath(value))
     if os.name == "nt" and ":" in str(path)[2:]:
         raise PreflightError("alternate_stream_forbidden")
@@ -129,7 +143,7 @@ def preflight(request: dict) -> dict:
                           "observed": None, "postflight": None}
                          for old, new in replacements.items()],
         "coverage": "not_read_no_word_stories_checked",
-        "blocker": "native_word_ownership_timeout_cleanup_not_implemented",
+        "blocker": "legacy_cover_native_disabled_explicit_draft_candidate_required",
     }
 
 

@@ -20,7 +20,8 @@
 | `inspect_resources.ps1`, `resource_inventory.py` | До трёх serial check_papers без Add, source/raw hashes/layouts/durations/exit codes; validation → conservative inventory/draft. `../docs/15_resource_inventory.md`; не print/reuse. |
 | `plan_stages.py` | Draft PDF-план из package-owned inventory/оценок: порядок, sheet/start counts, budget/reserve, stable IDs; не разведка/исполнитель/reuse. См. `../docs/14_stage_plan.md`. |
 | `spds_text/owned_acad.ps1`, `spds_text/OwnedCadProcess.cs` | Частный Job для GUI-исполнителя TXTFIX: suspended CreateProcess → assign → resume, очистка только своего семейства (включая оставшихся потомков), без PID/name kill. |
-| `make_cover.ps1`, `cover_preflight.py` | Промежуточный offline path/SHA/replacement-contract preflight (`-PreflightOnly`); небезопасный Word default заблокирован, DOC/PDF не генерируются; breaking safety change/блокеры — `../docs/19_safe_cover.md`. |
+| `make_cover.ps1`, `cover_preflight.py` | Offline path/SHA/replacement-contract preflight (`-PreflightOnly`); прежний небезопасный default заблокирован. |
+| `make_cover_draft.ps1`, `cover_draft.py`, `cover_native_host.ps1` | Явный guarded draft candidate: direct own Word/NativeOM, snapshot/counts/PDF/private Job stop/no-replace publication; native availability/quality pending, не принятая генерация/выдача; `../docs/19_safe_cover.md`. |
 | `clean_issue.ps1` | Мусор в папке выдачи (`*.bak`, `_recover`, `plot.log`, `*.dwl*`…): отчёт, `-Apply` — перенос в резервную папку. |
 | `spds_text\` | Найти/заменить текст, вкл. таблицы и выноски СПДС, без взрыва; режим `-Mode props` — свойства объектов СПДС (напр. отметки уровня). Отдельный acad.exe + плагин `SpdsText.cs` (`build_txtfix.ps1`). |
 | `find_codes.py` | C1: чужие коды сооружений, устаревшие формулировки/ГОСТ — на листах и в именах макетов; разбор журнала `run_txtfix.ps1 -Dry`. |

@@ -10,6 +10,8 @@ using System.Threading;
 namespace AutocadRd {
  public sealed class OwnedCadProcess : IDisposable {
   IntPtr job = IntPtr.Zero, process = IntPtr.Zero;
+  // Captured exactly once from CreateProcessInfo, never inferred from a later PID lookup.
+  public uint OriginalProcessId { get; private set; }
   [StructLayout(LayoutKind.Sequential)] struct Limits {
    public long processTime, jobTime; public uint flags;
    public UIntPtr minWorking, maxWorking; public uint activeLimit;
@@ -81,6 +83,7 @@ namespace AutocadRd {
     Check(CreateProcessW(executable, command, IntPtr.Zero, IntPtr.Zero, false, 4, IntPtr.Zero, null,
                          ref startup, out info), "owned_process_create_failed"); // CREATE_SUSPENDED.
     owner.process = info.process;
+    owner.OriginalProcessId = info.processId;
     Check(AssignProcessToJobObject(owner.job, owner.process), "owned_job_assignment_failed");
     assigned = true;
     Check(ResumeThread(info.thread) != UInt32.MaxValue, "owned_process_resume_failed");
