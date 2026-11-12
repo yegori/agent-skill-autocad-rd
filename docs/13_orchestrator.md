@@ -51,6 +51,16 @@ adaptive replanning и artifact reuse этим producer ещё не реализ
 и plan/step ссылки не авторизуют execution и не доказывают dependency completeness. ControlledPlot — отдельный
 явно допущенный тест с PDF validation/owner Job cleanup, не whitelist QUIT crash и не общий pipeline/reuse.
 
+## PDF-only сшивка по явному hash-bound порядку
+
+`toolkit/assemble_pdf.py` / [20_safe_pdf_assembly.md](20_safe_pdf_assembly.md): UTF-8 plan из relative PDF/SHA/pages
+и expected total, explicit input-root, NEW output PDF+NEW JSON report вне input-root. Common physical/alias guards,
+parser получает те же captured bytes, closed validation, exclusive publication, partial-pair failure сохраняется.
+Не discovery/печать/выбор версий/S4 closure/инженерная приёмка; `assembled_pending_coordinator_qa` не выпуск.
+PDF → `artifact_paths`, JSON sidecar → `report_paths`; manifest caller создаёт отдельно после QA.
+Принимать pair только с exit0+успешным private result, не по одному sidecar. Legacy `merge_set.py` sort/replace
+не изменён и не объявлен безопасной public publication. В `files_only` инструмент запрещён.
+
 ## Самодостаточный PDF-отчёт (не PDF-комплект чертежей)
 
 Для явно запрошенной полной **PDF-only** проверки с разрешённым Python/PDF-анализом можно

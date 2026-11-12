@@ -85,6 +85,7 @@ Experimental direct side-database dependency reader — `docs/17_dependency_prob
 | Перенумерация листов | `renum_stamp.ps1 -Files … -Prefix "Т7." -Map @{…}` (сначала без `-Apply`) |
 | Имена / удаление пустых макетов | `fix_layouts.ps1 -File … -Rename @{…} -Delete …` |
 | Печать комплекта и сводный PDF | `plot_set.ps1 -DwgDir … -OutDir … [-Exclude …] [-CoverPdf … -SetPdf …]` |
+| PDF-only сшивка, явный order/SHA/pages, NEW outputs без replace | `python -I assemble_pdf.py --plan … --input-root … --output … --report …`; pending QA, partial-pair правила — `docs/20_safe_pdf_assembly.md`; legacy merge не safe public contract |
 | Сводный PDF ↔ PDF по листам, шифр на страницах | `analysis/setcheck.py <сводный.pdf> <папка листов>` |
 | PDF актуальны / что изменилось против прошлой выдачи | `python -I compare_pdfs.py <старое> <новое> [--diff-out …]` |
 | Текст штампов, поиск текста, форматы, рендер PDF | `python -I pdf_tools.py stamps|grep|sizes|render …` |

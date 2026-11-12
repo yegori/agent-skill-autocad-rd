@@ -14,7 +14,8 @@
 | `fix_layouts.ps1` | Переименование макетов, удаление пустых. |
 | `xrefs.ps1` | Legacy basename/фиксированная папка, generic workdir cleanup, QUIT/`-Apply` source overwrite; НЕ общий S4 verifier и НЕ controlled prepared-copy acceptance. |
 | `prepare_xref_copy.ps1`, `prepare_xref_copy.py`, `dependencies/PrepareXrefCopy.cs` | Offline write candidate: ровно THREE exact BTR maps/source+target SHA → одна NEW full-filename copy, side-DB SaveAs/reopen, distinct managed hold/private Job, no-overwrite publish. Не native-accepted/closure/engineering approval; `../docs/18_prepared_xref_copy.md`. |
-| `plot_set.ps1`, `merge_set.py` | Печать всех макетов в `NNN <наименование>.pdf` (перед печатью — проверка форматов) и сводный PDF (обложка + листы). |
+| `plot_set.ps1`, `merge_set.py` | Печать всех макетов в `NNN <наименование>.pdf` (перед печатью — проверка форматов) и legacy сводный PDF (sort/replace, не safe public contract). |
+| `assemble_pdf.py` | PDF-only из explicit UTF-8 order/SHA/pages plan: captured bytes, common guards, NEW PDF+JSON, no overwrite, partial-pair evidence; pending coordinator QA, не выпуск. API/limits/tests — `../docs/20_safe_pdf_assembly.md`. |
 | `inspect_dependencies.ps1`, `dependencies/DependencyProbe.cs`, `dependency_inventory.py` | Experimental direct side-DB refs/fonts/assets/layout metadata; не actual closure/authorization. Новый большой read принят с managed hold после старого failed, needs_input ресурсов; VLA warnings/полная closure открыты, `../docs/17_dependency_probe.md`. |
 | `stage_inputs.py` | Новые snapshot/working, declared file/environment hashes, exact verify/plan-step refs; coverage explicit_not_discovered, всегда execution_authorized=false. `../docs/16_staging_plot.md`. |
 | `inspect_resources.ps1`, `resource_inventory.py` | До трёх serial check_papers без Add, source/raw hashes/layouts/durations/exit codes; validation → conservative inventory/draft. `../docs/15_resource_inventory.md`; не print/reuse. |

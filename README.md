@@ -51,6 +51,7 @@ claude plugin install rd-ci@rd-ci-arkhyz
 | `docs/16_staging_plot.md`, `toolkit/stage_inputs.py` | Explicit-only stage/snapshot/working/environment hashes и тестовый ControlledPlot; не discovery/авторизация/reuse |
 | `docs/18_prepared_xref_copy.md`, `toolkit/prepare_xref_copy.ps1` | Offline THREE-map write candidate на одной NEW копии; native compile/SaveAs acceptance pending, не closure/выдача |
 | `docs/PROJECT_CLAUDE_TEMPLATE.md` | Шаблон инструкции для папки объекта |
+| `docs/20_safe_pdf_assembly.md`, `toolkit/assemble_pdf.py` | Explicit UTF-8 ordered SHA/pages plan → NEW PDF+sidecar, no overwrite, partial-pair evidence; synthetic-only evidence, coordinator QA pending |
 | `docs/19_safe_cover.md`, `toolkit/make_cover_draft.ps1` | Guarded direct-Word draft candidate, native/visual acceptance pending; прежний `make_cover` default остаётся preflight-only |
 | `docs/06_decisions.md` | Решения по пакету и границе с сервисом |
 | `examples/reports/` | Пример генерации таблицы замечаний |
