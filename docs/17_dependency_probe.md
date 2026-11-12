@@ -2,6 +2,53 @@
 
 08–10.11.2026. Продолжение explicit staging (`16_staging_plot.md`). Не включать печать/общий consumer по этой заготовке.
 
+## Opt-in exact block edge — OFFLINE candidate, native ещё не принят
+
+Первый поиск не нашёл готового safe targeted BTR reader: `run_txtfix -Handles` фильтрует text edits,
+а `PrepareXrefCopy.GetObjectId` участвует в write/SaveAs, не read-only recipe. Поэтому существующий
+`inspect_dependencies.ps1` / `DependencyProbe.cs` дополнен минимальным явно включаемым путём:
+
+```text
+pwsh -NoProfile -File toolkit/inspect_dependencies.ps1 -SourceDwg <selected-copy.dwg> -HostDwg <approved-safe-host.dwg> -EvidenceDir <NEW-ascii-dir> -TimeoutSec 120 -TargetReferenceHandle <reference-hex> -TargetBlockHandle <expected-BTR-hex> -ExpectedSourceSha256 <approved-64hex>
+```
+
+Три новых options только **вместе**; positive Int64 hex без leading zeros/пробелов/paths, SHA строго64hex.
+Это bind к явно выбранной версии/source, не разрешение CAD; не переносить handles/proof в другую версию,
+даже при byte-equivalent файлах. Wrapper проверяет expected SHA до создания work/CAD, native повторно до DB open
+и после закрытия проверяет source SHA. Defaults без новых options не меняются.
+
+- Только прямой `GetObjectId(false,Handle,0)` в той же side DB, точные managed BlockReference/BTR types,
+  actual handle+ObjectId link и lookup/runtime/RX/owner provenance. Missing/erased/wrong type/link → structured
+  `needs_input`, не guessed target; API lookup/open status сохраняется. Не читать actual mismatched target по fallback.
+- Referring entity + target definition entities/attributes (не recursion), Observe→STYLE/BTR dependency edges,
+  layer handle/name/basic Entity.Visible. Unknown/proxy/dimension/viewport resources остаются unsupported.
+  Requested ref — metadata/link only (его instance attributes не enumerated). Owner BTR/layout —
+  **metadata_only**, owner/model не сканируется. Definition scan явно not_started /
+  external_skipped / bounded / enumerated / capped. Paper context — association, не plot visibility proof.
+- Старые caps2048BTR/20000entities неизменны; selected BTR+owner максимум2 при valid link. Entity budget
+  включает requested ref, definition entries и attributes; count/capped/complete=false выводятся явно.
+  Достигнут cap → needs_input, не увеличить budget. Nested/dependent edges только handles для будущего scope.
+- External/dependent owner/target → needs_input, их definitions **не enumerate**; requested ref metadata
+  разрешается только по provided handle в source DB до проверки owner flags. Никаких FONTALT/FONTMAP/style tables,
+  fonts/registry/paths/resources поиска, external DWG opening, reload/repath/SaveAs/plot/геометрии/extents/BBox.
+  `paper_reachability` и `plot_visibility` UNKNOWN; observed flags не доказывают печатную видимость/полноту.
+- Opt-in native `kind=side_database_targeted_block`, coverage=exact_edge_and_target_local_definition,
+  schema1 с `targeted_block`; probe kind=targeted_block_probe/target_request. Это отдельный partial payload,
+  **не прежняя table inventory**: `dependency_inventory.py` его намеренно не принимает, не выдумывать пустые
+  xrefs/fonts и не backfill старый usage. Coordinator отдельно проверяет raw SHA/marker/expected request/records.
+- Native `observed_partial` = typed linked local target enumerated в bounds, НЕ closure/acceptance;
+  semantic `needs_input` = unresolved/type/link/external/owner/cap/malformed membership с сохранённым reason.
+  Оба статуса лишь controlled read completion. Hash/API/timeout/early exit/build failures остаются failed,
+  без accepted probe. Transactions/DB закрыты до JSON/marker; managed hold/live original root/private Job/null
+  natural exit/verified cleanup протокол прежний, owner kernel не менялся. Без live coordinator evidence нет acceptance.
+
+Focused `scripts/test_targeted_block.ps1 -WorkDir <NEW-private-work>` компилирует reader со synthetic API stubs,
+проверяет option/handle/source/type/link/erased/external/caps/attributes/provenance/UNKNOWN и narrow default fixture,
+потом metadata-only ABI compile по уже имеющемуся SDK (иначе явный SKIP) и fake-wrapper transport/needs_input/
+refusal/default compatibility. `-ManagedOnly` позволяет не повторять неизменённые wrapper cases после C#-only delta.
+Никакие реальные DB/CAD/user documents не открываются; все test artifacts сохраняются. Это не native приёмка,
+не разрешение повторить старые full scans; далее только отдельно допущенный новый exact one-source/one-CAD scope.
+
 ## Две текущие зависимости прочитаны впервые (11.11)
 
 Два новых genuine Pi/serial single-CAD reads по предоставленным issue-relative DWG: **8,14 /10,15 с**,

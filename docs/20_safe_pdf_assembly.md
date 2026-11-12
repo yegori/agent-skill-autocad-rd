@@ -5,6 +5,16 @@
 Это отдельный safe contract; legacy `merge_set.py` **не изменён** (sort/replace/cover==out остаются legacy).
 Его replace допустим лишь в отдельно защищённом private intermediate, не как публичная no-overwrite гарантия.
 
+## Первый actual coordinator scope принят отдельно
+
+На новой локальной сборке одной выбранной версии issued bodies с принятым Word frontmatter подтверждены
+exit0/private pair/hashes,10 страниц и неизменность inputs; coordinator отдельно проверил все страницы в обзорном
+виде и порядок/stream hashes/text/geometry. Восемь body RGB40dpi exact; две front страницы не exact,
+max channel delta2/255 — не объявлять полной pixel/semantic fidelity. Другая версия bodies и exploratory листы
+не смешивались, предыдущий control не повторялся; runtime pending-QA flags/старые manifests не backfill.
+Это bounded PDF assembly/overview acceptance, **не native proof для выбранной версии, S4 closure, fine engineering,
+подписи/release или full MVP**. Следующий scope требует собственного выбора inputs/NEW outputs/QA.
+
 ## API / CLI
 
 Python3 + уже установленный PyMuPDF (`import pymupdf`), без установки/fallback/subprocess/network.
