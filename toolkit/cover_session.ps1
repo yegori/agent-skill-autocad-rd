@@ -63,6 +63,34 @@ function Set-CoverIdentityError([Collections.IDictionary]$Evidence, $Exception) 
         }
     } catch { } # Provenance cannot replace the primary failure.
 }
+function Get-CoverIdentityMember($Target, [string]$Member, [Collections.IDictionary]$Evidence, [string]$Key) {
+    $Evidence[$Key]='getter_not_returned'
+    $property=$Target.PSObject.Properties[$Member]
+    if ($null -eq $property) { $Evidence[$Key]='missing';throw 'identity_member_missing' }
+    $value=$property.get_Value()
+    $Evidence[$Key]=if($null -eq $value){'null'}else{'returned'}
+    return ,$value
+}
+function Confirm-CoverWordWindow($Window, $Owner, [scriptblock]$WindowPid,
+                                [Collections.IDictionary]$Evidence, [string]$Prefix) {
+    $Owner.Guard()
+    $key=$Prefix+'_hwnd'
+    $Evidence.substep=$key+'_get'
+    $Evidence[$key]=@{shape='getter_not_returned';type='unknown'}
+    $property=$Window.PSObject.Properties['Hwnd']
+    if ($null -eq $property) { $Evidence[$key].shape='missing';throw 'identity_hwnd_member_missing' }
+    $raw=$property.get_Value()
+    $Evidence.substep=$key+'_validate'
+    $hwnd=ConvertTo-CoverHandle $raw $Evidence $key
+    if ($hwnd -eq 0) { throw 'identity_word_window_hwnd_zero' }
+    $Evidence.substep=$Prefix+'_pid_lookup'
+    $observed=& $WindowPid $hwnd
+    if ($observed -isnot [uint32] -and $observed -isnot [int32] -and $observed -isnot [int64]) { throw 'identity_pid_not_scalar_integer' }
+    $Evidence[$Prefix+'_pid']=$observed
+    $Evidence[$Prefix+'_pid_matches_original']=($observed -eq $Owner.OriginalProcessId)
+    if ($observed -ne $Owner.OriginalProcessId) { throw 'word_window_foreign_pid' }
+    return $hwnd
+}
 function Invoke-CoverSession {
     param($Owner, [scriptblock]$FindPane, [scriptblock]$Bind, [scriptblock]$WindowPid,
           [scriptblock]$Track, [scriptblock]$Document, [int]$PaneTimeoutSec,
@@ -88,37 +116,29 @@ function Invoke-CoverSession {
     $IdentityEvidence.substep='bind'
     $bound = & $Bind $paneHwnd $Owner.OriginalProcessId
     $IdentityEvidence.bind_returned=$true
-    $IdentityEvidence.substep='pane_track'
-    $pane = & $Track $bound
-    Assert-CoverTrackedScalar $bound $pane $IdentityEvidence 'pane_tracking'
+    $IdentityEvidence.substep='native_window_track'
+    $nativeWindow = & $Track $bound
+    Assert-CoverTrackedScalar $bound $nativeWindow $IdentityEvidence 'native_window_tracking'
+    # Word.Window.Hwnd, not an assumed Word.Application.Hwnd. Child/frame numbers may differ.
+    $nativeHwnd=Confirm-CoverWordWindow $nativeWindow $Owner $WindowPid $IdentityEvidence 'native_window'
+    $Owner.Guard()
     $IdentityEvidence.substep='application_access'
-    $IdentityEvidence.application_member_state='getter_not_returned'
-    $appProperty = $pane.PSObject.Properties['Application']
-    if ($null -eq $appProperty) { $IdentityEvidence.application_member_state='missing'; throw 'identity_application_member_missing' }
-    $untrackedApplication = $appProperty.get_Value()
-    $IdentityEvidence.application_member_state=if($null -eq $untrackedApplication){'null'}else{'returned'}
+    $untrackedApplication=Get-CoverIdentityMember $nativeWindow 'Application' $IdentityEvidence 'application_member_state'
     $IdentityEvidence.substep='application_track'
     $application = & $Track $untrackedApplication
     Assert-CoverTrackedScalar $untrackedApplication $application $IdentityEvidence 'application_tracking'
     $Owner.Guard()
-    $IdentityEvidence.substep='application_hwnd_get'
-    $IdentityEvidence.application_hwnd=@{shape='getter_not_returned';type='unknown'}
-    $hwndProperty = $application.PSObject.Properties['Hwnd']
-    if ($null -eq $hwndProperty) { $IdentityEvidence.application_hwnd.shape='missing';throw 'identity_hwnd_member_missing' }
-    $rawHwnd = $hwndProperty.get_Value()
-    $IdentityEvidence.substep='application_hwnd_validate'
-    $applicationHwnd = ConvertTo-CoverHandle $rawHwnd $IdentityEvidence 'application_hwnd'
-    if ($applicationHwnd -eq 0) { throw 'identity_application_hwnd_zero' }
-    $IdentityEvidence.substep='application_pid_lookup'
-    $appPid = & $WindowPid $applicationHwnd
-    if ($appPid -isnot [uint32] -and $appPid -isnot [int32] -and $appPid -isnot [int64]) { throw 'identity_pid_not_scalar_integer' }
-    $IdentityEvidence.application_pid=$appPid
-    $IdentityEvidence.application_pid_matches_original=($appPid -eq $Owner.OriginalProcessId)
-    if ($appPid -ne $Owner.OriginalProcessId) { throw 'application_hwnd_foreign' }
+    # ONLY ActiveWindow from the SAME verified bound application; never foreground/global lookup.
+    $IdentityEvidence.substep='application_active_window_access'
+    $untrackedActive=Get-CoverIdentityMember $application 'ActiveWindow' $IdentityEvidence 'application_active_window_member_state'
+    $IdentityEvidence.substep='application_active_window_track'
+    $activeWindow=& $Track $untrackedActive
+    Assert-CoverTrackedScalar $untrackedActive $activeWindow $IdentityEvidence 'application_active_window_tracking'
+    $activeHwnd=Confirm-CoverWordWindow $activeWindow $Owner $WindowPid $IdentityEvidence 'application_active_window'
     $Owner.Guard()
     $IdentityEvidence.substep='document'
     $documentResult = & $Document $application
     @{document=$documentResult; ownership=@{identity_verified=$true; original_pid=$Owner.OriginalProcessId;
-        pane_hwnd=$paneHwnd; application_hwnd=$applicationHwnd; method='direct_original_root_nativeom'}}
+        pane_hwnd=$paneHwnd; native_window_hwnd=$nativeHwnd; application_active_window_hwnd=$activeHwnd; method='direct_original_root_nativeom'}}
     } catch { Set-CoverIdentityError $IdentityEvidence $_.Exception; throw }
 }

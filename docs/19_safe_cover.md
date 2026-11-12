@@ -86,7 +86,14 @@ broker-created PID. До запуска: интерактивная Windows STA/
 PID используется только для проверки HWND, никогда для kill/late ownership adoption.
 
 Bounded EnumWindows/child search выбирает `_WwG` только original PID. OBJID_NATIVEOM/IDispatch bind
-только этому pane; возвращённый Application.Hwnd тоже должен принадлежать original STILL-LIVE root.
+только этому pane. Bound NativeOM **Word.Window.Hwnd** должен принадлежать original STILL-LIVE root;
+лишь после этого берётся Window.Application, затем **эта же Application.ActiveWindow → Window.Hwnd**
+и ещё одна проверка original PID. Child pane/Word frame/active frame HWND могут численно различаться:
+сравниваются PIDs, а не равенство HWND. Это не foreground/global/ROT lookup и не переключение окон.
+Поддержанный Word contract: [Window.Hwnd](https://learn.microsoft.com/en-us/office/vba/api/word.window.hwnd)
+(readonly Int32) и [Application.ActiveWindow](https://learn.microsoft.com/en-us/office/vba/api/word.application.activewindow)
+(readonly Window; при отсутствии окон может бросить). Application.Hwnd не является обязательным gate;
+отсутствие descriptor в одном run не доказывает отсутствие свойства во всех версиях/COM adapters.
 Root.Guard перед OM/settings/Open/операциями; root handoff/early exit (даже 0), foreign HWND,
 непоявление pane или недоступный OM — failed, никакого fallback на другой процесс.
 
@@ -94,15 +101,20 @@ Identity chain: Bind callback явно возвращает `,object`, чтоб�
 pane в pipeline до Keep-CoverRcw. Pure Keep helper сохраняет scalar reference; array/null/замена объекта
 от Track отвергаются, без unwrap/подбора/повторного bind. Этот managed дефект воспроизведён на inert
 IEnumerable pane, **не доказано**, что настоящий Word RCW имел такой shape или это причина старого сбоя.
-Application/Hwnd берутся через фиксированные PS property descriptors с явным `get_Value()`:
-исключение getter не должно тихо превратиться в null. Реальный COM adapter ещё требует проверки.
-До `[long]` проверяются null/array/CLR integer type/overflow; Hwnd=0 у application — отказ до PID lookup,
+Window.Hwnd, Window.Application и той же Application.ActiveWindow берутся через фиксированные PS
+property descriptors с явным `get_Value()`: getter failure не должен тихо превратиться в null.
+Никаких generic getter fallback, глобального окна или другой Application. Реальный COM adapter ещё требует проверки.
+До `[long]` проверяются null/array/CLR integer type/overflow; Hwnd=0 у native/active Window — отказ до PID lookup,
 selector=0 остаётся только ожиданием pane в прежнем deadline. Нет speculative signed32/64 reinterpretation.
-`native-result.identity_chain` содержит фиксированный substep (selector/pane_pid_lookup/bind/pane_track/
-application_access/application_track/application_hwnd_get/validate/application_pid_lookup/document),
+`native-result.identity_chain` содержит фиксированные substeps selector/pane_pid_lookup/bind/native_window_track,
+затем native_window_hwnd_get/validate/native_window_pid_lookup, application_access/track,
+application_active_window_access/track, application_active_window_hwnd_get/validate,
+application_active_window_pid_lookup, document;
 только scalar integer HWND/CLR numeric type либо null/array shape/length, Track shape/reference flags, observed PID/match flags,
 outer/inner HRESULT и вложенный Win32 error code. Нет COM serialization/ToString/Name/text/captions.
-Missing getter/null/zero не схлопываются в одну причину; provenance failure не заменяет primary error.
+Точные поля HWND/ownership теперь `pane_hwnd`, `native_window_hwnd`, `application_active_window_hwnd`;
+misleading alias `application_hwnd` удалён, не означает Application.Hwnd. Native/active PID и match flags
+имеют соответствующие prefixes. Missing getter/null/zero не схлопываются; provenance не заменяет primary error.
 Новая provenance не восстанавливает неизвестные HWND/substep прошлых failed UUID задним числом.
 `/w` вместо `/x` явно запрашивает отдельный instance **с новым blank**, `/a` и `/q` сохранены;
 `/Automation`, shell/DDE/factory/ROT, source или synthetic seed на argv не используются.
@@ -170,8 +182,9 @@ pwsh -NoProfile -File scripts/test_cover_owner.ps1
 ```
 
 Для изменённой identity chain — отдельно `pwsh -NoProfile -File scripts/test_cover_identity_chain.ps1`:
-actual Invoke-CoverSession + actual Keep helper + production Bind callback AST, только inert objects,
-healthy scalar/IEnumerable path и invalid/foreign/stale/null/array/Track/getter cases до Document tripwire.
+actual Invoke-CoverSession + actual Keep helper + production Bind callback AST, только inert objects;
+WordApplication fixture **без Hwnd**, healthy native/active Window scalar/IEnumerable и invalid/foreign/
+stale/null/array/Track/getter/no-active-window cases до Document tripwire.
 Это не реальная Word/NativeOM/Open/export acceptance и не основание ещё одного физического повтора без review.
 
 Для изменённого startup/window/blank guard — отдельно

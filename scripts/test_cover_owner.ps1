@@ -55,8 +55,8 @@ try {
         if ($mode -eq 'earlyexit0') {[AutocadRd.OwnedCadProcess]::EarlyExit=$true}
         $script:docCalls=0;$caught=$false
         $find={param($id) if ($mode -eq 'paneTimeout') {0} else {100}}
-        $bind={param($hwnd,$id) [pscustomobject]@{Application=[pscustomobject]@{Hwnd=200}}}
-        $windowPid={param($hwnd) if (($mode -eq 'foreignPane' -and $hwnd -eq 100) -or ($mode -eq 'foreignApplication' -and $hwnd -eq 200)) {999} else {731}}
+        $bind={param($hwnd,$id) [pscustomobject]@{Hwnd=200;Application=[pscustomobject]@{ActiveWindow=[pscustomobject]@{Hwnd=300}}}}
+        $windowPid={param($hwnd) if (($mode -eq 'foreignPane' -and $hwnd -eq 100) -or ($mode -eq 'foreignApplication' -and $hwnd -eq 300)) {999} else {731}}
         try {$result=Invoke-CoverSession $owner $find $bind $windowPid {param($v) return ,$v} {$script:docCalls++; @{document_closed=$true}} 1}
         catch {$caught=$true}
         finally {$owner.Dispose();[AutocadRd.OwnedCadProcess]::EarlyExit=$false}

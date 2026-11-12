@@ -1,139 +1,129 @@
-# Actual Invoke-CoverSession + actual pure Keep-CoverRcw, no host activation/COM/Win32.
+# Word Window contract fixtures; actual session/Keep/production Bind AST. NEVER native host/COM/Win32.
+param([string]$SessionFile='') # Test-only old-source comparison, no production native override.
 $ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot
-. (Join-Path $root 'toolkit/cover_session.ps1')
-# Baseline can load ONLY this pure helper's AST, never execute the native host top level.
-if (-not (Get-Command Keep-CoverRcw -ErrorAction SilentlyContinue)) {
-    $tokens=$null;$parseErrors=$null
-    $ast=[Management.Automation.Language.Parser]::ParseFile((Join-Path $root 'toolkit/cover_native_host.ps1'),[ref]$tokens,[ref]$parseErrors)
-    $helper=$ast.Find({param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Keep-CoverRcw'},$true)
-    # Include the function header parameters, not merely its body ScriptBlock.
-    Invoke-Expression $helper.Extent.Text
-}
+if(-not $SessionFile){$SessionFile=Join-Path $root 'toolkit/cover_session.ps1'}
+. $SessionFile
 Add-Type -TypeDefinition @'
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.ComponentModel;
 namespace AutocadRd {
  public static class CoverWindow {
-  public static object Bind(long hwnd,uint original){IdentityFake.Binding.Events.Add("bind:"+hwnd+":"+original);if(IdentityFake.Binding.Mode=="bindError")throw new System.Runtime.InteropServices.COMException("OBJECT_DETAIL_NOT_DIAGNOSTIC",unchecked((int)0x80004005));return IdentityFake.Binding.Value;}
+  public static object Bind(long hwnd,uint original){WordFake.State.Events.Add("bind:"+hwnd+":"+original);return WordFake.State.Native;}
  }
 }
-namespace IdentityFake {
- public class UnwritableEvidence : System.Collections.Hashtable {public override object this[object key] {get{return "selector";}set{throw new Exception("inert_diagnostic_failure");}}}
- public class App { public virtual object Hwnd {get;set;} }
- public class ThrowingApp : App {public override object Hwnd {get{throw new Exception("OBJECT_DETAIL_NOT_DIAGNOSTIC");}set{}}}
- public class Pane { public virtual object Application {get;set;} }
- public class ThrowingPane : Pane {public override object Application {get{throw new Exception("OBJECT_DETAIL_NOT_DIAGNOSTIC");}set{}}}
- public class EnumerablePane : Pane, IEnumerable {public IEnumerator GetEnumerator(){yield return "ENUMERATION_SENTINEL";}}
- public class EnumerableApp : App, IEnumerable {public IEnumerator GetEnumerator(){yield return "ENUMERATION_SENTINEL";}}
- public static class Binding {
-  public static object Value; public static string Mode;
-  public static System.Collections.Generic.List<string> Events;
-  public static object Bind(){return Value;}
-  public static uint Pid(long hwnd){if(hwnd!=100 && hwnd!=200)throw new Win32Exception(1400,"inert_invalid_window");return 731;}
+namespace WordFake {
+ // Deliberately NO App.Hwnd. Only the documented App.ActiveWindow -> Window.Hwnd contract.
+ public class App {
+  public object RawActive; public bool GetterThrows;
+  public object ActiveWindow {get{State.Events.Add("active_access");if(GetterThrows)throw new System.Runtime.InteropServices.COMException("OBJECT_DETAIL_NOT_DIAGNOSTIC",unchecked((int)0x80004005));return RawActive;}}
+ }
+ public class Window {
+  public string Kind; public object RawHwnd,RawApplication; public bool HwndThrows,ApplicationThrows;
+  public object Hwnd {get{State.Events.Add("hwnd:"+Kind);if(HwndThrows)throw new Exception("OBJECT_DETAIL_NOT_DIAGNOSTIC");return RawHwnd;}}
+  public object Application {get{State.Events.Add("application_access");if(ApplicationThrows)throw new Exception("OBJECT_DETAIL_NOT_DIAGNOSTIC");return RawApplication;}}
+ }
+ public class EnumerableWindow : Window,IEnumerable {public IEnumerator GetEnumerator(){yield return "ENUMERATION_SENTINEL";}}
+ public class EnumerableApp : App,IEnumerable {public IEnumerator GetEnumerator(){yield return "ENUMERATION_SENTINEL";}}
+ public static class State {
+  public static object Native; public static string Mode; public static List<string> Events;
+  public static uint Pid(long hwnd){
+   if((Mode=="pane_stale" && hwnd==100)||(Mode=="native_stale" && hwnd==200)||(Mode=="active_stale" && hwnd==300))throw new Win32Exception(1400,"inert_invalid_window");
+   if((Mode=="pane_foreign" && hwnd==100)||(Mode=="native_foreign" && hwnd==200)||(Mode=="active_foreign" && hwnd==300))return 999;
+   if(hwnd!=100 && hwnd!=200 && hwnd!=300)throw new Win32Exception(1400,"inert_invalid_window");return 731;
+  }
  }
 }
 '@
 $tokens=$null;$parseErrors=$null
-$hostAst=[Management.Automation.Language.Parser]::ParseFile((Join-Path $root 'toolkit/cover_native_host.ps1'),[ref]$tokens,[ref]$parseErrors)
-$bindAst=$hostAst.Find({param($node) $node -is [Management.Automation.Language.ScriptBlockAst] -and
-    $node.ParamBlock -and $node.ParamBlock.Parameters.Count -eq 2 -and $node.Extent.Text -match 'CoverWindow\]::Bind'},$true)
+$ast=[Management.Automation.Language.Parser]::ParseFile((Join-Path $root 'toolkit/cover_native_host.ps1'),[ref]$tokens,[ref]$parseErrors)
+$bindAst=$ast.Find({param($n) $n -is [Management.Automation.Language.ScriptBlockAst] -and $n.ParamBlock -and
+    $n.ParamBlock.Parameters.Count -eq 2 -and $n.Extent.Text -match 'CoverWindow\]::Bind'},$true)
 $productionBind=$bindAst.GetScriptBlock()
+function Assert-Chain([bool]$Ok,[string]$Message){if(-not $Ok){throw $Message}}
+$modes=@('healthy','int64','enumNative','enumApplication','enumActive','allEnumerable','sameWindow','pane_foreign','pane_stale',
+ 'selector_null','selector_array','selector_string','selector_zero','bind_null','bind_array',
+ 'app_missing','app_null','app_getter','activeMember_missing','activeMember_null','activeMember_getter',
+ 'track_native_array','track_app_array','track_active_array','track_clone','track_null','track_extra')
+foreach($prefix in @('native','active')){foreach($fault in @('null','zero','array','string','float','missing','getter','foreign','stale')){$modes+=($prefix+'_'+$fault)}}
 $passed=0
-function Assert-Chain([bool]$Condition,[string]$Message){if(-not $Condition){throw $Message}}
-foreach($mode in @('scalar','int64App','enumerablePane','enumerableApp','nullSelector','arraySelector','stringSelector','pointerSelector','overflowSelector','zeroSelector',
-    'nullAppHwnd','missingAppHwnd','zeroAppHwnd','arrayAppHwnd','stringAppHwnd','floatAppHwnd','signedStaleApp',
-    'foreignPane','foreignApp','stalePane','staleApp','pidArray','bindNull','bindArray','bindError','missingApplication','nullApplication','appGetter','hwndGetter',
-    'trackArray','trackNull','trackClone','trackApplicationArray','trackExtra')) {
-    $rcws=[Collections.Generic.List[object]]::new();$script:events=[Collections.Generic.List[string]]::new();$script:documents=0
-    $owner=[pscustomobject]@{OriginalProcessId=[uint32]731};$owner|Add-Member ScriptMethod Guard {$script:events.Add('guard')}
-    $app=if($mode -eq 'enumerableApp'){,[IdentityFake.EnumerableApp]::new()}else{,[IdentityFake.App]::new()}
-    $app.Hwnd=[int32]200
-    switch($mode){
-        'int64App' {$app.Hwnd=[long]200}
-        'nullAppHwnd' {$app.Hwnd=$null}
-        'missingAppHwnd' {$app=[pscustomobject]@{}}
-        'zeroAppHwnd' {$app.Hwnd=[long]0}
-        'arrayAppHwnd' {$app.Hwnd=[long[]]@(200)}
-        'stringAppHwnd' {$app.Hwnd='200'}
-        'floatAppHwnd' {$app.Hwnd=[double]200}
-        'signedStaleApp' {$app.Hwnd=[int32]::MinValue}
-        'hwndGetter' {$app=[IdentityFake.ThrowingApp]::new()}
-    }
-    $pane=if($mode -eq 'enumerablePane'){,[IdentityFake.EnumerablePane]::new()}else{,[IdentityFake.Pane]::new()}
-    if($mode -eq 'appGetter'){$pane=[IdentityFake.ThrowingPane]::new()}
-    $pane.Application=$app
-    if($mode -eq 'missingApplication'){$pane=[pscustomobject]@{}}
-    if($mode -eq 'nullApplication'){$pane.Application=$null}
-    [IdentityFake.Binding]::Value=$pane;[IdentityFake.Binding]::Events=$script:events;[IdentityFake.Binding]::Mode=$mode
-    if($mode -eq 'bindNull'){[IdentityFake.Binding]::Value=$null}
-    if($mode -eq 'bindArray'){[IdentityFake.Binding]::Value=[object[]]@($pane)}
-    $find={param($original)
-        $script:events.Add("select:$original")
-        switch($mode){'nullSelector' {return $null};'arraySelector' {return ,([long[]]@(100))};'stringSelector' {return '100'};'pointerSelector' {return [IntPtr]::new(100)};'overflowSelector' {return [uint64]::MaxValue};'zeroSelector' {return [long]0};default{return [long]100}}
-    }
-    # Execute the ACTUAL production callback AST against the inert static CoverWindow stub.
-    $bind=$productionBind
-    $lookup={param($hwnd)
-        $script:events.Add("pid:$hwnd")
-        Assert-Chain ($hwnd -is [long]) 'lookup argument was not scalar Int64'
-        if(($mode -eq 'stalePane' -and $hwnd -eq 100) -or ($mode -eq 'staleApp' -and $hwnd -eq 200)){[IdentityFake.Binding]::Pid(-1);return}
-        if($mode -eq 'pidArray'){return ,([uint32[]]@(731))}
-        if(($mode -eq 'foreignPane' -and $hwnd -eq 100) -or ($mode -eq 'foreignApp' -and $hwnd -eq 200)){[uint32]999;return}
-        [IdentityFake.Binding]::Pid($hwnd)
-    }
-    $track=switch($mode){
-        'trackArray' {{param($value) return ,@($value)}}
-        'trackNull' {{param($value) return $null}}
-        'trackClone' {{param($value) return [IdentityFake.Pane]::new()}}
-        'trackApplicationArray' {{param($value) if($value -is [IdentityFake.App]){return ,@($value)};Keep-CoverRcw $value}}
-        'trackExtra' {{param($value) $value;'EXTRA_OUTPUT'}}
-        default {${function:Keep-CoverRcw}}
-    }
-    $document={param($application)
-        $script:events.Add('document');$script:documents++
-        Assert-Chain ([object]::ReferenceEquals($application,$app)) 'Document did not receive original application'
-        @{document_closed=$true}
-    }
-    $caught=$null;$evidence=@{}
-    try{$result=Invoke-CoverSession $owner $find $bind $lookup $track $document $(if($mode -eq 'zeroSelector'){1}else{30}) $evidence}catch{$caught=$_}
-    $json=$evidence|ConvertTo-Json -Depth 10 -Compress
-    Assert-Chain ($json -notmatch 'OBJECT_DETAIL_NOT_DIAGNOSTIC|ENUMERATION_SENTINEL|IdentityFake' -and $json.Length -lt 2048) 'provenance serialized object/details'
-    if($mode -in @('scalar','int64App','enumerablePane','enumerableApp')) {
-        Assert-Chain ($null -eq $caught -and $script:documents -eq 1) ("healthy chain failed $mode : $caught; events="+($script:events -join ','))
-        Assert-Chain (($script:events -join ',') -eq 'guard,select:731,guard,pid:100,bind:100:731,guard,pid:200,guard,document') 'callback order/arguments changed'
-        Assert-Chain ($result.ownership.identity_verified -and $result.ownership.pane_hwnd -eq 100 -and $result.ownership.application_hwnd -eq 200) 'ownership proof missing'
-        Assert-Chain ($evidence.pane_pid_matches_original -and $evidence.application_pid_matches_original -and $evidence.substep -eq 'document') 'PID checks not recorded'
-        Assert-Chain ($rcws.Count -eq 2) 'actual Keep did not retain scalar pane/application'
-        Keep-CoverRcw $app | Out-Null
-        Assert-Chain ($rcws.Count -eq 2) 'Keep duplicate references not deduplicated'
-    } else {
-        Assert-Chain ($null -ne $caught -and $script:documents -eq 0) ("invalid chain reached Document: $mode")
-        Assert-Chain ($evidence.error_component -eq $evidence.substep -and $evidence.ContainsKey('error_hresult')) 'failure substep/HRESULT missing'
-        if($mode -in @('stalePane','staleApp','signedStaleApp')) {
-            Assert-Chain ($evidence.native_error -eq 1400 -and $caught.ToString() -match 'inert_invalid_window') 'nested Win32 error/primary not preserved'
-            Assert-Chain ($evidence.substep -eq $(if($mode -eq 'stalePane'){'pane_pid_lookup'}else{'application_pid_lookup'})) 'ambiguous ProcessId substep'
-        }
-        if($mode -eq 'missingApplication'){Assert-Chain ($evidence.substep -eq 'application_access' -and $evidence.application_member_state -eq 'missing') 'missing Application not recorded'}
-        if($mode -eq 'nullApplication'){Assert-Chain ($evidence.application_member_state -eq 'null' -and $evidence.substep -eq 'application_track') 'null Application not recorded'}
-        if($mode -eq 'bindError'){Assert-Chain ($evidence.error_inner_hresult -eq -2147467259 -and $evidence.substep -eq 'bind') 'inner COM HRESULT missing'}
-        if($mode -eq 'signedStaleApp'){Assert-Chain ($evidence.application_hwnd.value -eq [int32]::MinValue -and $evidence.application_hwnd.type -eq 'System.Int32') 'signed HWND reinterpreted'}
-        if($mode -eq 'nullAppHwnd'){Assert-Chain ($evidence.application_hwnd.shape -eq 'null' -and $evidence.substep -eq 'application_hwnd_validate') 'null erased by cast'}
-        if($mode -eq 'missingAppHwnd'){Assert-Chain ($evidence.application_hwnd.shape -eq 'missing' -and $evidence.substep -eq 'application_hwnd_get') 'missing member erased by cast'}
-        if($mode -in @('foreignPane','stalePane','nullSelector','arraySelector','stringSelector','pointerSelector','overflowSelector')) {
-            Assert-Chain (@($script:events|Where-Object{$_ -like 'bind:*'}).Count -eq 0) 'bind reached before pane identity proof'
-        }
-        if($mode -eq 'floatAppHwnd'){Assert-Chain ($evidence.application_hwnd.type -eq 'System.Double') 'numeric type missing'}
-        if($mode -eq 'pointerSelector'){Assert-Chain ($evidence.pane_hwnd.type -eq 'System.IntPtr') 'unsupported pointer type missing'}
-        if($mode -eq 'zeroAppHwnd'){Assert-Chain ($evidence.application_hwnd.value -eq 0 -and -not ($script:events -contains 'pid:0')) 'zero app HWND looked up'}
-        if($mode -eq 'appGetter'){Assert-Chain ($evidence.substep -eq 'application_access') ('app getter substep missing: '+$json)}
-        if($mode -eq 'hwndGetter'){Assert-Chain ($evidence.substep -eq 'application_hwnd_get') 'HWND getter substep missing'}
-    }
-    $passed++
+foreach($mode in $modes){
+ $rcws=[Collections.Generic.List[object]]::new();$script:events=[Collections.Generic.List[string]]::new();$script:documents=0
+ $owner=[pscustomobject]@{OriginalProcessId=[uint32]731};$owner|Add-Member ScriptMethod Guard {$script:events.Add('guard')}
+ $app=if($mode -in @('enumApplication','allEnumerable')){,[WordFake.EnumerableApp]::new()}else{,[WordFake.App]::new()}
+ $native=if($mode -in @('enumNative','allEnumerable')){,[WordFake.EnumerableWindow]::new()}else{,[WordFake.Window]::new()}
+ $active=if($mode -in @('enumActive','allEnumerable')){,[WordFake.EnumerableWindow]::new()}else{,[WordFake.Window]::new()}
+ $native.Kind='native';$native.RawHwnd=[int32]200;$native.RawApplication=$app
+ $active.Kind='active';$active.RawHwnd=[int32]300;$app.RawActive=$active
+ if($mode -eq 'int64'){$native.RawHwnd=[long]200;$active.RawHwnd=[long]300}
+ if($mode -eq 'sameWindow'){$active=$native;$app.RawActive=$native}
+ foreach($prefix in @('native','active')){
+  $target=if($prefix -eq 'native'){,$native}else{,$active}
+  switch($mode){
+   ($prefix+'_null') {$target.RawHwnd=$null}
+   ($prefix+'_zero') {$target.RawHwnd=[int32]0}
+   ($prefix+'_array') {$target.RawHwnd=[int32[]]@(200)}
+   ($prefix+'_string') {$target.RawHwnd='200'}
+   ($prefix+'_float') {$target.RawHwnd=[double]200}
+   ($prefix+'_getter') {$target.HwndThrows=$true}
+   ($prefix+'_missing') {if($prefix -eq 'native'){$native=[pscustomobject]@{Application=$app}}else{$active=[pscustomobject]@{};$app.RawActive=$active}}
+  }
+ }
+ switch($mode){
+  'app_missing' {$native=[pscustomobject]@{Hwnd=[int32]200}}
+  'app_null' {$native.RawApplication=$null}
+  'app_getter' {$native.ApplicationThrows=$true}
+  'activeMember_missing' {$app=[pscustomobject]@{};$native.RawApplication=$app}
+  'activeMember_null' {$app.RawActive=$null}
+  'activeMember_getter' {$app.GetterThrows=$true}
+ }
+ Assert-Chain ($null -eq $app.PSObject.Properties['Hwnd']) 'fixture incorrectly supplies App.Hwnd'
+ $script:nativeRef=$native;$script:appRef=$app;$script:activeRef=$active
+ [WordFake.State]::Native=$native;[WordFake.State]::Events=$script:events;[WordFake.State]::Mode=$mode
+ if($mode -eq 'bind_null'){[WordFake.State]::Native=$null};if($mode -eq 'bind_array'){[WordFake.State]::Native=[object[]]@($native)}
+ $find={param($original) $script:events.Add("select:$original");switch($mode){'selector_null'{return $null};'selector_array'{return ,([long[]]@(100))};'selector_string'{return '100'};'selector_zero'{return [long]0};default{return [long]100}}}
+ $lookup={param($hwnd) Assert-Chain ($hwnd -is [long]) 'non-scalar lookup';$script:events.Add("pid:$hwnd");[WordFake.State]::Pid($hwnd)}
+ $track={param($value)
+  if(($mode -eq 'track_native_array' -and [object]::ReferenceEquals($value,$script:nativeRef)) -or
+     ($mode -eq 'track_app_array' -and [object]::ReferenceEquals($value,$script:appRef)) -or
+     ($mode -eq 'track_active_array' -and [object]::ReferenceEquals($value,$script:activeRef))){return ,@($value)}
+  switch($mode){'track_clone'{return [WordFake.Window]::new()};'track_null'{return $null};'track_extra'{$value;'EXTRA';return};default{Keep-CoverRcw $value}}
+ }
+ $doc={param($application) $script:events.Add('document');$script:documents++;Assert-Chain ([object]::ReferenceEquals($application,$script:appRef)) 'different app adopted';@{document_closed=$true}}
+ $evidence=@{};$caught=$null
+ try{$result=Invoke-CoverSession $owner $find $productionBind $lookup $track $doc $(if($mode -eq 'selector_zero'){1}else{30}) $evidence}catch{$caught=$_}
+ $json=$evidence|ConvertTo-Json -Depth 10 -Compress
+ Assert-Chain ($json -notmatch 'OBJECT_DETAIL_NOT_DIAGNOSTIC|ENUMERATION_SENTINEL|WordFake' -and $json.Length -lt 3072) 'unsafe provenance'
+ if($mode -in @('healthy','int64','enumNative','enumApplication','enumActive','allEnumerable','sameWindow')){
+  Assert-Chain ($null -eq $caught -and $script:documents -eq 1) ("healthy Word contract failed $mode : $caught; evidence=$json")
+  $order=@($script:events|Where-Object{$_ -ne 'guard'}) -join ','
+  $expectedOrder=if($mode -eq 'sameWindow'){'select:731,pid:100,bind:100:731,hwnd:native,pid:200,application_access,active_access,hwnd:native,pid:200,document'}else{'select:731,pid:100,bind:100:731,hwnd:native,pid:200,application_access,active_access,hwnd:active,pid:300,document'}
+  Assert-Chain ($order -eq $expectedOrder) 'incorrect callback/getter/PID order'
+  Assert-Chain ($script:events[$script:events.Count-2] -eq 'guard') 'no final owner guard'
+  Assert-Chain ($evidence.pane_pid_matches_original -and $evidence.native_window_pid_matches_original -and $evidence.application_active_window_pid_matches_original) 'three PID gates absent'
+  Assert-Chain ($result.ownership.native_window_hwnd -eq 200 -and $result.ownership.application_active_window_hwnd -eq $(if($mode -eq 'sameWindow'){200}else{300}) -and $result.ownership.pane_hwnd -eq 100) 'window evidence incorrect'
+  Assert-Chain (-not $result.ownership.ContainsKey('application_hwnd') -and -not $evidence.ContainsKey('application_hwnd')) 'misleading App.Hwnd alias'
+  $expectedRefs=if($mode -eq 'sameWindow'){2}else{3}
+  Assert-Chain ($rcws.Count -eq $expectedRefs) 'scalar RCWs not retained';Keep-CoverRcw $app|Out-Null;Assert-Chain ($rcws.Count -eq $expectedRefs) 'duplicate RCW retained'
+ }else{
+  Assert-Chain ($null -ne $caught -and $script:documents -eq 0) ('invalid contract reached Document: '+$mode)
+  Assert-Chain ($evidence.error_component -eq $evidence.substep -and $evidence.ContainsKey('error_hresult')) 'failure provenance missing'
+  foreach($prefix in @('native','active')){
+   $key=if($prefix -eq 'native'){'native_window'}else{'application_active_window'}
+   if($mode -eq ($prefix+'_stale')){Assert-Chain ($evidence.substep -eq ($key+'_pid_lookup') -and $evidence.native_error -eq 1400) 'stale window provenance'}
+   if($mode -eq ($prefix+'_foreign')){Assert-Chain ($evidence.substep -eq ($key+'_pid_lookup') -and -not $evidence[$key+'_pid_matches_original']) 'foreign window accepted'}
+   if($mode -eq ($prefix+'_null')){Assert-Chain ($evidence[$key+'_hwnd'].shape -eq 'null' -and $evidence.substep -eq ($key+'_hwnd_validate')) 'null erased'}
+   if($mode -eq ($prefix+'_missing')){Assert-Chain ($evidence[$key+'_hwnd'].shape -eq 'missing' -and $evidence.substep -eq ($key+'_hwnd_get')) 'missing getter erased'}
+   if($mode -eq ($prefix+'_getter')){Assert-Chain ($evidence.substep -eq ($key+'_hwnd_get')) 'getter provenance lost'}
+  }
+  if($mode -like 'native_*'){Assert-Chain (-not ($script:events -contains 'application_access')) 'Application read before native Window PID proof'}
+  Assert-Chain (-not ($script:events -contains 'pid:0')) 'zero lookup attempted'
+  if($mode -eq 'activeMember_missing'){Assert-Chain ($evidence.substep -eq 'application_active_window_access' -and $evidence.application_active_window_member_state -eq 'missing') 'missing ActiveWindow erased'}
+  if($mode -eq 'activeMember_null'){Assert-Chain ($evidence.substep -eq 'application_active_window_track' -and $evidence.application_active_window_member_state -eq 'null') 'null ActiveWindow erased'}
+  if($mode -eq 'activeMember_getter'){Assert-Chain ($evidence.substep -eq 'application_active_window_access' -and $evidence.error_inner_hresult -eq -2147467259) 'no-activewindow exception lost'}
+ }
+ $passed++
 }
-$primary=[ComponentModel.Win32Exception]::new(1400,'inert_primary')
-Set-CoverIdentityError ([IdentityFake.UnwritableEvidence]::new()) $primary
-Assert-Chain ($primary.NativeErrorCode -eq 1400 -and $primary.Message -eq 'inert_primary') 'diagnostic failure masked primary'
-$passed++
-Write-Output "PASS actual identity chain: $passed inert cases; no host/COM/WindowAPI/process activation"
+Write-Output "PASS documented Word Window identity contract: $passed inert cases; App has NO Hwnd; no host/COM/WindowAPI activation"
