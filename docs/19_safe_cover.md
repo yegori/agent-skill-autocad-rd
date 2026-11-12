@@ -1,7 +1,13 @@
 # Обложка: offline preflight и guarded draft candidate
 
-**Native availability/качество DOC/PDF ещё не приняты.** `make_cover_draft.ps1` — новый явный
-кандидат для отдельного smoke/QA координатора, не готовая выдача/инженерная приёмка/full MVP.
+**Принят первый bounded passthrough trial и отдельная PDF QA координатора** на Word16.0.14332.20461:
+предоставленный DOC → NEW DOC + двухстраничный A4 PDF, без замен. Это не новая ревизия/инженерная выдача/full MVP.
+Подтверждены три own-PID gates, security readback, Open/SaveAs/Export/target Close, root live до own stop,
+cleanup/outer-empty и неизменность source/snapshot. Все candidate/reference pages просмотрены; PDF/DOC extracted
+text совпал с basis, RGB не exact. Первый exact-RGB QA assertion сохранён, отдельная measured/visual review
+принята без переоценки native run/старых manifests. Полная DOC semantic identity, подписи и replacement counts
+не приняты; реквизиты/дата/ревизия/B–В не назначались и не нормализовались. Raw pending/native_accepted flags
+не backfill: coordinator acceptance — отдельное evidence. Новый title PDF — artifact_paths, не report PDF.
 Старый `make_cover.ps1` остаётся safe-by-default: только `-PreflightOnly`, без него ошибка до COM;
 `-Force` всегда ошибка. Никакого bypass к прежнему безусловному Word COM нет.
 Другие read/plot/CAD инструменты и `check_env.ps1` не изменены.
@@ -103,7 +109,7 @@ pane в pipeline до Keep-CoverRcw. Pure Keep helper сохраняет scalar 
 IEnumerable pane, **не доказано**, что настоящий Word RCW имел такой shape или это причина старого сбоя.
 Window.Hwnd, Window.Application и той же Application.ActiveWindow берутся через фиксированные PS
 property descriptors с явным `get_Value()`: getter failure не должен тихо превратиться в null.
-Никаких generic getter fallback, глобального окна или другой Application. Реальный COM adapter ещё требует проверки.
+Никаких generic getter fallback, глобального окна или другой Application. Реальный COM adapter подтверждён только для принятого passthrough trial, не произвольных inputs/замен.
 До `[long]` проверяются null/array/CLR integer type/overflow; Hwnd=0 у native/active Window — отказ до PID lookup,
 selector=0 остаётся только ожиданием pane в прежнем deadline. Нет speculative signed32/64 reinterpretation.
 `native-result.identity_chain` содержит фиксированные substeps selector/pane_pid_lookup/bind/native_window_track,
@@ -138,7 +144,7 @@ Path='' **недостаточно**: Saved=true, Type=document, не ReadOnly/p
 по одному character/paragraph/section/story; ноль fields/shapes/inline images/tables/frames/content controls/
 hyperlinks/comments/revisions/notes/variables, нет next story. Это metadata-only guard без чтения Text/Name;
 неизвестная metadata/unsaved recovered/nonempty/другие stories — отказ **до Close и source Open**.
-Действительность этих Word properties на настоящем `/w` blank ещё требует native проверки; ограничения
+Этот startup-blank gate прошёл в принятом trial; для иных inputs/состояний ограничения
 не ослаблять ради smoke. Macro/link guards по-прежнему ставятся до любого approved snapshot Open.
 
 В own instance до Open: AutomationSecurity=3, DisplayAlerts=0, Options UpdateLinksAtOpen,
@@ -151,7 +157,8 @@ Open-CoverSnapshot сохраняет 16 positional args: Encoding(11), Document
 Required16-object/no-default inert signature воспроизводит старый binder error и принимает новый helper;
 Windows VARIANT-memory check подтверждает VT_ERROR=10/code во всех трёх slots, не COMserver/Word dispatch.
 Все прочие readonly/security аргументы, порядок и scalar-preserved return неизменны. Успешный Word Open/
-returned document этим не принят; error сам по себе не доказывает, что COM никогда не dispatch-ился.
+returned document не принимается одним ABI test: отдельный bounded native trial принят выше.
+Error сам по себе не доказывает, что COM никогда не dispatch-ился.
 После close — release только полученных own RCW. **Word.Quit не вызывается**: новый controlled режим
 требует root живым после closed document/release, затем Stop только своего held Job и verified empty.
 Это не natural-exit success и не наследование CAD native acceptance.
@@ -214,9 +221,8 @@ watchdog/session ownership gates и timeout uncertainty. Три реальные
 Windows privilege; mocked reparse отдельно. Никакой Word/COM/native process activation в этих тестах.
 Старый pipeline fake Open boundary НЕ моделирует IDispatch marshaling; новый required-object helper/
 ErrorWrapper memory ABI test проверяет binder/VT_ERROR, но не реальный Word dispatch. C# compile-only не native read.
-Координатор уже подтвердил настоящий readonly NativeOM bind, три original-PID Window gates и source-security
-readback/startup-blank код до Open; это не target-document acceptance. Word Open(optional args)/returned doc/
-SaveAs/Export/target Close/release/полный lifecycle acceptance ещё нужны.
-Координатор: review changed identity chain → выбрать fresh UUID narrow identity probe либо approved passthrough в NEW location →
+Первый controlled passthrough/closed-output/cleanup trial и его отдельная PDF QA приняты в scope выше;
+не повторять уже принятый запуск ради общего статуса. Другие templates/замены/full DOC fidelity не наследуют приёмку.
+Дальше: version-bound applicable-set/S4 metadata ledger → NEW control candidate из accepted front matter + existing issued bodies →
 provenance/cleanup audit → визуальная/text/requisites/headers/images/fields/layout QA. Никаких
 инженерных значений/шифров/дат/ревизий автоматически не исправлять, B/В конфликт не нормализовать.
