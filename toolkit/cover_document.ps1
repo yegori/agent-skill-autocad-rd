@@ -1,7 +1,8 @@
 # COM logic separated for offline inert-object tests. Never activates an Application.
 function Open-CoverSnapshot($Documents, [string]$Snapshot) {
-    $missing = [Type]::Missing
-    # COM IDispatch optional placeholders; actual Office marshaling remains a native acceptance gate.
+    # VT_ERROR/DISP_E_PARAMNOTFOUND preserves Word defaults without CLR Missing/default substitution.
+    $missing = [Runtime.InteropServices.ErrorWrapper]::new(-2147352572)
+    # Actual Office dispatch/return remains a separate native acceptance gate.
     return ,$Documents.Open($Snapshot, $false, $true, $false,
         'not-a-supplied-password', 'not-a-supplied-password', $false,
         'not-a-supplied-password', 'not-a-supplied-password', 0, $missing,

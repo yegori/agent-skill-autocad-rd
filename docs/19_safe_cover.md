@@ -145,6 +145,13 @@ hyperlinks/comments/revisions/notes/variables, нет next story. Это metadat
 UpdateFieldsAtPrint, UpdateLinksAtPrint, SaveNormalPrompt, ConfirmConversions=false; значения
 сохраняются/восстанавливаются, ошибки не превращаются в успех. NoEncodingDialog, readonly,
 no MRU/repair/conversion, non-user password sentinels в Open; никаких Fields.Update/links fetching/signing.
+Open-CoverSnapshot сохраняет 16 positional args: Encoding(11), DocumentDirection(14), XMLTransform(16)
+передаются как `ErrorWrapper(-2147352572)` = VT_ERROR/DISP_E_PARAMNOTFOUND (0x80020004), не Type.Missing.
+Это сохраняет Word optional defaults без CLR default-substitution и без null/zero/Encoding/Direction guess.
+Required16-object/no-default inert signature воспроизводит старый binder error и принимает новый helper;
+Windows VARIANT-memory check подтверждает VT_ERROR=10/code во всех трёх slots, не COMserver/Word dispatch.
+Все прочие readonly/security аргументы, порядок и scalar-preserved return неизменны. Успешный Word Open/
+returned document этим не принят; error сам по себе не доказывает, что COM никогда не dispatch-ился.
 После close — release только полученных own RCW. **Word.Quit не вызывается**: новый controlled режим
 требует root живым после closed document/release, затем Stop только своего held Job и verified empty.
 Это не natural-exit success и не наследование CAD native acceptance.
@@ -181,6 +188,11 @@ pwsh -NoProfile -File scripts/test_cover_document.ps1
 pwsh -NoProfile -File scripts/test_cover_owner.ps1
 ```
 
+Для узкого Open-marshaling gate — `pwsh -NoProfile -File scripts/test_cover_open_marshalling.ps1`:
+ACTUAL helper/16 required object args/no CLR defaults, точные defaults/security slots/Cyrillic path,
+scalar/IEnumerable return и throwing Open. Опционально `-VariantAbi` в отдельном Windows test host
+проверяет только VARIANT memory/VariantClear, без COMserver. Не повторять identity/kernel/document full suites.
+
 Для изменённой identity chain — отдельно `pwsh -NoProfile -File scripts/test_cover_identity_chain.ps1`:
 actual Invoke-CoverSession + actual Keep helper + production Bind callback AST, только inert objects;
 WordApplication fixture **без Hwnd**, healthy native/active Window scalar/IEnumerable и invalid/foreign/
@@ -200,8 +212,11 @@ draft CLI намеренно ExpectedPages=0 (pre-native gate), никаких W
 collisions/partial publication, actual PS document lifecycle/order/count/overlap failures, managed
 watchdog/session ownership gates и timeout uncertainty. Три реальные symlink cases могут skip без
 Windows privilege; mocked reparse отдельно. Никакой Word/COM/native process activation в этих тестах.
-Fake Open boundary НЕ моделирует IDispatch optional Missing marshaling; C# compile-only не native read.
-Настоящие HWND/_WwG/OM/Open(optional args)/SaveAs/Export/Close/release/Job-family acceptance ещё нужны.
+Старый pipeline fake Open boundary НЕ моделирует IDispatch marshaling; новый required-object helper/
+ErrorWrapper memory ABI test проверяет binder/VT_ERROR, но не реальный Word dispatch. C# compile-only не native read.
+Координатор уже подтвердил настоящий readonly NativeOM bind, три original-PID Window gates и source-security
+readback/startup-blank код до Open; это не target-document acceptance. Word Open(optional args)/returned doc/
+SaveAs/Export/target Close/release/полный lifecycle acceptance ещё нужны.
 Координатор: review changed identity chain → выбрать fresh UUID narrow identity probe либо approved passthrough в NEW location →
 provenance/cleanup audit → визуальная/text/requisites/headers/images/fields/layout QA. Никаких
 инженерных значений/шифров/дат/ревизий автоматически не исправлять, B/В конфликт не нормализовать.
