@@ -24,7 +24,8 @@ pwsh -NoProfile -File toolkit/inspect_dependencies.ps1 -SourceDwg <selected-copy
   layer handle/name/basic Entity.Visible. Unknown/proxy/dimension/viewport resources остаются unsupported.
   Requested ref — metadata/link only (его instance attributes не enumerated). Owner BTR/layout —
   **metadata_only**, owner/model не сканируется. Definition scan явно not_started /
-  external_skipped / bounded / enumerated / capped. Paper context — association, не plot visibility proof.
+  external_skipped / bounded / enumerated / capped. Layout BTR target (model/paper) → needs_input/metadata only,
+  никогда не полный model/layout replay. Paper context — association, не plot visibility proof.
 - Старые caps2048BTR/20000entities неизменны; selected BTR+owner максимум2 при valid link. Entity budget
   включает requested ref, definition entries и attributes; count/capped/complete=false выводятся явно.
   Достигнут cap → needs_input, не увеличить budget. Nested/dependent edges только handles для будущего scope.

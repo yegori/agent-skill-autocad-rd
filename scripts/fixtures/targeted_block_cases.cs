@@ -84,6 +84,14 @@ class TargetedBlockCases {
   s.block.Items.Add(s.nested.ObjectId);r=s.Read();Check((bool)r["truncated"] && s.tr.Entities==20000 && !s.tr.Opened.Contains("F2"),"attribute cap escaped");
   Console.WriteLine("OK: unchanged 2048/20000 limits include requested reference and attributes, no cap increase");
  }
+ static void LayoutTarget(){
+  foreach(bool model in new[]{true,false}){
+   var s=new Scene();s.block.IsLayout=true;s.block.LayoutId=new Layout{Number=0x22,ModelType=model}.ObjectId;
+   var r=s.Read();Check((string)r["status"]=="needs_input" && (string)r["reason"]=="layout_target_not_definition" && s.block.Enumerations==0,"layout/model target silently scanned");
+   Check((string)r["definition_scan"]=="not_started" && (string)((Dictionary<string,object>)r["target_container"])["space"]==(model?"model":"paper"),"layout target metadata lost");
+  }
+  Console.WriteLine("OK: explicit model/paper layout targets metadata-only, never full model/layout replay");
+ }
  static void DefaultCompatibility(){
   var s=new Scene();var table=new BlockTable{s.owner.ObjectId,s.block.ObjectId};
   var r=Data(Call("ReadUsage",s.tr,table));
@@ -91,5 +99,5 @@ class TargetedBlockCases {
   Check(!r.ContainsKey("targeted_block") && ((object[])r["observations"]).Length==4 && ((object[])r["containers"]).Length==2,"default capture changed");
   Console.WriteLine("OK: narrow unchanged-default schema/capture fixture (not old full suite)");
  }
- static int Main(){try{Parser();Happy();Failures();Cap();DefaultCompatibility();return 0;}catch(System.Exception e){Console.Error.WriteLine(e);return 1;}}
+ static int Main(string[] args){try{if(args.Length==1 && args[0]=="layout-only"){LayoutTarget();return 0;}Parser();Happy();Failures();Cap();DefaultCompatibility();LayoutTarget();return 0;}catch(System.Exception e){Console.Error.WriteLine(e);return 1;}}
 }

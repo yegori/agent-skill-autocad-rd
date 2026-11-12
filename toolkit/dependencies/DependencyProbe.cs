@@ -173,6 +173,7 @@ public class RdDependencyProbe {
         if (block.IsFromExternalReference || block.IsFromOverlayReference || block.IsDependent) {
             result["definition_scan"] = "external_skipped"; result["reason"] = "external_target_skipped"; return result;
         }
+        if (block.IsLayout) { result["reason"] = "layout_target_not_definition"; return result; }
         int count = 1; result["definition_scan"] = "bounded_target_only";
         foreach (ObjectId id in block) {
             if (count >= MaxUsageEntities) { result["truncated"] = true; break; }
