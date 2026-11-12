@@ -1,37 +1,89 @@
-# Добавить пользовательский формат листа в PMP плоттера «DWG To PDF» (AutoCAD 2024), чтобы печатались макеты
-# с нестандартным форматом. Признак проблемы в логе accoreconsole: «Нет подходящего носителя».
-# Имя формата должно совпадать с тем, что записано в макете (группа 4 объекта Layout), например
-#   "UserDefinedMetric (594.00 x 1682.00мм)"  — ширина x высота, мм.
-# python -I add_pmp_size.py "UserDefinedMetric (594.00 x 1682.00мм)" ["UserDefinedMetric (841.00 x 1783.00мм)" …] [--pmp путь]
-# Перед записью кладёт копию рядом: «DWG To PDF.pmp.bak_ГГГГММДД_ЧЧММСС». Уже существующие имена пропускает.
-import sys; sys.stdout.reconfigure(encoding='utf-8', errors='replace')  # python -I игнорирует PYTHONIOENCODING; в pwsh: [Console]::OutputEncoding = [Text.Encoding]::UTF8
-import json, os, re, shutil, sys, datetime
+"""Explicitly add custom metric paper sizes to an existing DWG To PDF PMP.
+Uses shared AutoCAD/Civil 3D discovery; never creates a missing PMP or chooses
+between several candidates. Exact names OR existing same-orientation dimensions
+prevent duplicate additions. Availability of a dimension is not plot acceptance.
+"""
+import argparse
+import datetime
+import hashlib
+import importlib.util
+import json
+from pathlib import Path
+import sys
 
-args = sys.argv[1:]
-pmp = os.path.expandvars(r'%APPDATA%\Autodesk\AutoCAD 2024\R24.3\rus\Plotters\PMP Files\DWG To PDF.pmp')
-if '--pmp' in args:
-    i = args.index('--pmp'); pmp = args[i + 1]; del args[i:i + 2]
-raw = open(pmp, encoding='utf-8').read()
-head, body = raw.split('\n', 1)                        # 1-я строка: PIAFILEVERSION_3.0,json
-d = json.loads(body)
-m = d['data'].setdefault('udm', {}).setdefault('media', {})
-desc, size = m.setdefault('description', {}), m.setdefault('size', {})
-have = {v.get('name') for v in size.values()}
-added = []
-for name in args:
-    if name in have:
-        print('уже есть:', name); continue
-    w, h = map(float, re.search(r'\(([\d.]+)\s*x\s*([\d.]+)', name).groups())
-    dn = f'User-{int(w)}x{int(h)}'
-    desc[str(len(desc))] = {"caps_type": 2, "dimensional": True, "media_bounds_urx": w, "media_bounds_ury": h,
-                            "name": dn, "printable_area": w * h, "printable_bounds_llx": 0.0, "printable_bounds_lly": 0.0,
-                            "printable_bounds_urx": w, "printable_bounds_ury": h}
-    size[str(len(size))] = {"caps_type": 2, "landscape_mode": True, "localized_name": f'Пользовательский ({w:.2f} x {h:.2f} мм)',
-                            "media_description_name": dn, "media_group": 15, "name": name}
-    added.append(name)
-if added:
-    bak = pmp + '.bak_' + datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-    shutil.copy2(pmp, bak)
-    with open(pmp, 'w', encoding='utf-8', newline='\r\n') as f:
-        f.write(head.rstrip('\r') + '\n' + json.dumps(d, ensure_ascii=False, indent=1))
-    print('добавлено:', *added, sep='\n  '); print('копия до правки:', bak)
+_spec = importlib.util.spec_from_file_location('pmp_catalog', Path(__file__).with_name('pmp_catalog.py'))
+catalog = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(catalog)
+
+
+def add_sizes(path, names):
+    pmp = Path(path)
+    before = pmp.read_bytes()
+    head, data, entries = catalog.read_catalog(pmp)
+    media = data['data'].setdefault('udm', {}).setdefault('media', {})
+    desc, size = media.setdefault('description', {}), media.setdefault('size', {})
+    added = []
+    for name in names:
+        match = catalog.match_paper(entries, name)
+        if match != 'missing':
+            print('уже есть:', name, '(' + match + ')')
+            continue
+        dims = catalog.dimensions(name)
+        if not name.startswith('UserDefinedMetric') or not dims or min(dims) <= 0:
+            raise ValueError('invalid_metric_paper: ' + name)
+        w, h = dims
+        # Numeric keys can have gaps; len(collection) can overwrite existing entries.
+        def next_key(values):
+            n = 0
+            while str(n) in values:
+                n += 1
+            return str(n)
+        key = next_key(desc)
+        dn = 'RDCI-' + key
+        existing_names = {v.get('name') for v in desc.values()}
+        while dn in existing_names:
+            dn += '_'
+        desc[key] = dict(caps_type=2, dimensional=True, media_bounds_urx=w, media_bounds_ury=h,
+                         name=dn, printable_area=w*h, printable_bounds_llx=0.0, printable_bounds_lly=0.0,
+                         printable_bounds_urx=w, printable_bounds_ury=h)
+        size[next_key(size)] = dict(caps_type=2, landscape_mode=True,
+            localized_name=f'Пользовательский ({w:.2f} x {h:.2f} мм)',
+            media_description_name=dn, media_group=15, name=name)
+        entries.append(dict(name=name, dimensions_mm=dims))
+        added.append(name)
+    if not added:
+        return []
+    if pmp.read_bytes() != before:
+        raise ValueError('pmp_changed_during_read')
+    backup = Path(str(pmp) + '.bak_' + datetime.datetime.now().strftime('%Y%m%d_%H%M%S_%f'))
+    with backup.open('xb') as out:
+        out.write(before)
+    if hashlib.sha256(backup.read_bytes()).digest() != hashlib.sha256(before).digest():
+        raise ValueError('pmp_backup_failed')
+    # Keep original line convention; don't touch any other product/profile PMP.
+    newline = '\r\n' if b'\r\n' in before else '\n'
+    text = head.rstrip('\r') + '\n' + json.dumps(data, ensure_ascii=False, indent=1)
+    with pmp.open('w', encoding='utf-8', newline=newline) as out:
+        out.write(text)
+    print('добавлено:', *added, sep='\n  ')
+    print('копия до правки:', backup)
+    return added
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('names', nargs='+')
+    parser.add_argument('--pmp')
+    args = parser.parse_args()
+    resolution = catalog.resolve_pmp(args.pmp)
+    if resolution['status'] != 'found':
+        parser.error('PMP ' + resolution['status'] + '; specify --pmp explicitly. Candidates: ' + '; '.join(resolution['candidates']))
+    try:
+        add_sizes(resolution['path'], args.names)
+    except (ValueError, OSError) as error:
+        parser.error(str(error))
+
+
+if __name__ == '__main__':
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    main()

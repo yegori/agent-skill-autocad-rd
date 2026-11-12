@@ -4,6 +4,7 @@ param(
     [Parameter(Mandatory)][string]$InputRoot,
     [Parameter(Mandatory)][string[]]$Files,
     [Parameter(Mandatory)][string]$ResultFile,
+    [string]$PmpPath = '',
     [ValidateRange(1,900)][int]$BudgetSeconds = 900,
     [ValidateRange(1,300)][int]$PerFileTimeoutSec = 300
 )
@@ -38,14 +39,11 @@ $stream = [IO.File]::Open($target, [IO.FileMode]::CreateNew, [IO.FileAccess]::Wr
 $writer = [IO.StreamWriter]::new($stream, [Text.UTF8Encoding]::new($false))
 $originalWork = $env:RDCI_WORK
 $probeWork = Join-Path $baseWork ('resource-probe-' + [guid]::NewGuid().ToString('N'))
-$records = @(); $failure = $null; $clock = [Diagnostics.Stopwatch]::StartNew()
+$records = @(); $failure = $null; $pmpInfo = $null; $clock = [Diagnostics.Stopwatch]::StartNew()
 try {
-    $pmp = [Environment]::ExpandEnvironmentVariables('%APPDATA%/Autodesk/AutoCAD 2024/R24.3/rus/Plotters/PMP Files/DWG To PDF.pmp')
-    $have = @()
-    if (Test-Path -LiteralPath $pmp) {
-        $data = ([IO.File]::ReadAllText($pmp) -replace '^[^\r\n]*\r?\n','') | ConvertFrom-Json
-        if ($data.data.udm.media.size) { $have = @($data.data.udm.media.size.PSObject.Properties | ForEach-Object { $_.Value.name }) }
-    }
+    . "$PSScriptRoot/pmp_paths.ps1"
+    $pmpInfo = Get-PmpCatalog -Path $PmpPath -Inspect
+    $selectedPmp = if ($pmpInfo.status -eq 'found') { $pmpInfo.path } else { '' }
     foreach ($source in $resolved) {
         $remaining = [int][Math]::Floor($BudgetSeconds - $clock.Elapsed.TotalSeconds)
         if ($remaining -lt 1) { $failure = 'resource_budget_exhausted'; break }
@@ -54,7 +52,7 @@ try {
         $sha = (Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash.ToLowerInvariant()
         $elapsed = [Diagnostics.Stopwatch]::StartNew()
         $Global:AccCoreLastRun = $null
-        & "$PSScriptRoot/check_papers.ps1" -Files @($source) -TimeoutSec ([Math]::Min($PerFileTimeoutSec, $remaining)) -ControlledRead | Out-Host
+        & "$PSScriptRoot/check_papers.ps1" -Files @($source) -PmpPath $selectedPmp -TimeoutSec ([Math]::Min($PerFileTimeoutSec, $remaining)) -ControlledRead | Out-Host
         $elapsed.Stop()
         if (-not $Global:AccCoreLastRun -or $Global:AccCoreLastRun.Status -ne 'completed_controlled' -or
             -not $Global:AccCoreLastRun.CleanupVerified -or -not $Global:AccCoreLastRun.RootAliveBeforeStop) { throw 'resource_native_execution_failed' }
@@ -67,7 +65,14 @@ try {
             if ($parts.Count -ne 3 -or [string]::IsNullOrWhiteSpace($parts[0]) -or $names.ContainsKey($parts[0])) { throw 'resource_metadata_ambiguous' }
             $names[$parts[0]] = $true
             $paper = $parts[1]; $device = $parts[2]
-            $format = if ($paper -like 'UserDefined*') { if ($have -contains $paper) { 'custom_configured_unverified' } else { 'custom_missing' } }
+            $format = if ($paper -like 'UserDefined*') {
+                          if ($pmpInfo.status -ne 'found') { 'unknown' }
+                          else { switch (Get-PmpPaperMatch $pmpInfo $paper) {
+                            'exact_name' { 'custom_configured_unverified' }
+                            'dimensions_only' { 'unknown' }
+                            default { 'custom_missing' }
+                          } }
+                      }
                       elseif ($paper -match '^(ISO|ANSI|ARCH)_') { 'standard_unverified' } else { 'unknown' }
             $layouts += @{ name = $parts[0]; paper = $paper; device = $device; paper_status = $format }
         }
@@ -87,7 +92,7 @@ finally {
         $result = @{ schema_version = 1; kind = 'paper_resource_probe'; status = $(if ($failure) { 'failed' } else { 'observed' });
                      files = @($records); requested_files = $resolved.Count; budget_seconds = $BudgetSeconds;
                      elapsed_seconds = $clock.Elapsed.TotalSeconds; error = $failure;
-                     last_native_run = $Global:AccCoreLastRun; execution_authorized = $false }
+                     last_native_run = $Global:AccCoreLastRun; pmp_resolution = $pmpInfo; execution_authorized = $false }
         $writer.WriteLine(($result | ConvertTo-Json -Depth 12)); $writer.Flush()
     } finally { $writer.Dispose() }
 }

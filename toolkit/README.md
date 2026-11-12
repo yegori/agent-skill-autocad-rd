@@ -7,7 +7,7 @@
 |---|---|
 | `common.ps1` | Общие функции: запуск accoreconsole, `.scr` в cp1251 (с переводом строки в конце), проверка скобок LISP, занятость файла, копии в рабочую папку с сохранением начала имени (поля от dwgname), LISP-заготовки (макеты по вкладкам, печать). |
 | `dump_layout_texts.ps1` | Разведка: тексты/атрибуты по макетам (и в модели) + типы объектов. |
-| `check_papers.ps1`, `add_pmp_size.py` | Форматы листов до печати; недостающие — в PMP «DWG To PDF» (с копией). |
+| `check_papers.ps1`, `add_pmp_size.py`, `pmp_catalog.py`, `pmp_paths.ps1` | Общий поиск PMP AutoCAD/Civil 3D: явный путь → текущие зарегистрированные профили → известные папки. При неоднозначности запись запрещена без `-PmpPath`/`--pmp`. Размер в `localized_name`/description предотвращает дубли, но не подтверждает имя носителя/печать. |
 | `check_sheet_numbers.ps1` | Номера листов (поле / атрибут / текст) против номера из имени файла и порядка вкладок. |
 | `renum_stamp.ps1` | Перенумерация в штампах по таблице «старый → новый» (MTEXT вида «Т7.N»). |
 | `set_sheet_attr.ps1` | Номер листа в атрибут — только для действительно пустых (не трогать поля!). |
@@ -24,7 +24,7 @@
 | `make_cover.ps1`, `cover_preflight.py` | Offline path/SHA/replacement-contract preflight (`-PreflightOnly`); прежний небезопасный default заблокирован. |
 | `make_cover_draft.ps1`, `cover_draft.py`, `cover_native_host.ps1` | Явный guarded draft candidate: direct own Word/NativeOM, snapshot/counts/PDF/private Job stop/no-replace publication; native availability/quality pending, не принятая генерация/выдача; `../docs/19_safe_cover.md`. |
 | `clean_issue.ps1` | Мусор в папке выдачи (`*.bak`, `_recover`, `plot.log`, `*.dwl*`…): отчёт, `-Apply` — перенос в резервную папку. |
-| `spds_text\` | Найти/заменить текст, вкл. таблицы и выноски СПДС, без взрыва; режим `-Mode props` — свойства объектов СПДС (напр. отметки уровня). Отдельный acad.exe + плагин `SpdsText.cs` (`build_txtfix.ps1`). |
+| `spds_text\` | Найти/заменить текст, вкл. таблицы и выноски СПДС, без взрыва; `-Mode props` — свойства. Новый `-Mode rowdel -RowDel 'HANDLE:row=текст;…'`: один DWG, индексы с нуля, обязательный guard, dry-run/предварительная проверка всех строк/отказ SaveAs при ошибке. Native приёмка удаления ещё не выполнена; порядок — `../docs/11_pitfalls.md`. |
 | `find_codes.py` | C1: чужие коды сооружений, устаревшие формулировки/ГОСТ — на листах и в именах макетов; разбор журнала `run_txtfix.ps1 -Dry`. |
 | `compare_pdfs.py` | R1 / «PDF актуальны»: старая выдача против новой постранично; отличия по скоплениям пикселей с областями в мм, штамп отдельно; `--diff-out` — картинки «было / стало». |
 | `pdf_tools.py` | `render` (страница → PNG), `stamps` (текст штампа), `grep [--missing]` (поиск текста по PDF), `sizes` (форматы страниц). |

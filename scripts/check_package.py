@@ -43,6 +43,8 @@ def check():
                  'docs/10_playbook.md', 'docs/11_pitfalls.md', 'docs/12_arkhyz_test_cases.md',
                  'docs/PROJECT_CLAUDE_TEMPLATE.md', 'toolkit/README.md',
                  'toolkit/check_env.ps1', 'toolkit/common.ps1', 'toolkit/spds_text/SpdsText.cs',
+                 'toolkit/pmp_catalog.py', 'toolkit/pmp_paths.ps1',
+                 'toolkit/spds_text/RowDeletion.cs', 'toolkit/spds_text/rowdel_plan.ps1',
                  'docs/18_prepared_xref_copy.md', 'toolkit/prepare_xref_copy.ps1',
                  'toolkit/prepare_xref_copy.py', 'toolkit/dependencies/PrepareXrefCopy.cs',
                  'examples/reports/build_check_xlsx_example.py', 'scripts/install.ps1'):

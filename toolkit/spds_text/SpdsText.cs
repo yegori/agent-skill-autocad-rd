@@ -34,6 +34,7 @@ namespace SpdsText
         static StreamWriter log;
         static bool dry, abort;
         static int changed;
+        static List<RowRequest> rowRequests;
 
         static void L(string s) { if (log != null) { log.WriteLine(s); log.Flush(); } }
 
@@ -62,6 +63,21 @@ namespace SpdsText
             dry = Environment.GetEnvironmentVariable("TXT_DRY") == "1";
             Seen = Environment.GetEnvironmentVariable("TXT_SEEN");
             log = new StreamWriter(logPath ?? Path.Combine(Path.GetTempPath(), "txtfix.log"), false, new UTF8Encoding(false));
+            rowRequests = null;
+            try
+            {
+                if (Environment.GetEnvironmentVariable("TXT_MODE") == "rowdel")
+                {
+                    if (ins.Length != 1 || outs.Length != 1) throw new ArgumentException("rowdel_requires_one_input_and_output");
+                    if (File.Exists(outs[0]) || string.Equals(Path.GetFullPath(ins[0]), Path.GetFullPath(outs[0]), StringComparison.OrdinalIgnoreCase))
+                        throw new ArgumentException("rowdel_new_output_required");
+                    rowRequests = RowDeletion.Parse(Environment.GetEnvironmentVariable("TXT_ROWDEL"));
+                }
+            }
+            catch (System.Exception ex)
+            {
+                L("ERROR|rowdel_plan|" + ex.Message); L("ALLDONE"); log.Close(); log = null; return;
+            }
             try
             {
                 SpdsDependencies.Install(Environment.GetEnvironmentVariable("RDCI_SPDS_DIR"), L);
@@ -126,6 +142,7 @@ namespace SpdsText
             try
             {
                 Database db = doc.Database;
+                string mode = Environment.GetEnvironmentVariable("TXT_MODE");
                 L("FILE|" + db.Filename + "|dry=" + dry);
                 var mcIds = new List<KeyValuePair<string, ObjectId>>();
                 using (doc.LockDocument())
@@ -143,20 +160,36 @@ namespace SpdsText
                                 string cls = id.ObjectClass.Name;
                                 if (cls.StartsWith("mcs", StringComparison.OrdinalIgnoreCase))
                                 { mcIds.Add(new KeyValuePair<string, ObjectId>(lay + "|" + cls + "|" + id.Handle, id)); continue; }
-                                FixAcad(tr, id, lay);
+                                if (mode != "rowdel") FixAcad(tr, id, lay);
                             }
                         }
                         tr.Commit();
                     }
-                    string mode = Environment.GetEnvironmentVariable("TXT_MODE");
-                    if (mode == "props")
+                    if (mode == "rowdel")
+                    {
+                        try
+                        {
+                            changed = RowDeletion.Execute(rowRequests, handle =>
+                            {
+                                foreach (var kv in mcIds)
+                                {
+                                    if (!string.Equals(kv.Value.Handle.ToString(), handle, StringComparison.OrdinalIgnoreCase)) continue;
+                                    var entity = McObjectManager.GetObject(McObjectId.FromOldIdPtr(kv.Value.OldIdPtr)) as McTable;
+                                    return entity == null ? null : new McRowTable(entity);
+                                }
+                                return null;
+                            }, dry, L);
+                        }
+                        catch (System.Exception ex) { abort = true; L("ERROR|rowdel|" + ex.Message); }
+                    }
+                    else if (mode == "props")
                     { foreach (var kv in mcIds) PropsMc(kv.Value, kv.Key); }
                     else if (mode == "leader")
                     { foreach (var kv in mcIds) LeaderMc(kv.Value, kv.Key); }
                     else
                     { foreach (var kv in mcIds) FixMc(kv.Value, kv.Key); }
                     if (abort) L("NOTSAVED|" + outPath);
-                    else if (!dry && !string.IsNullOrEmpty(outPath))
+                    else if (!dry && !string.IsNullOrEmpty(outPath) && (mode != "rowdel" || changed > 0))
                     {
                         // 22.10: без регенерации псевдоштриховка СПДС (mcsPseudoHatch) сохранялась с пустой прокси-графикой —
                         // в консольной печати и без СПДС штриховка бетона пропадала. Регенерируем перед сохранением.
@@ -173,9 +206,32 @@ namespace SpdsText
                         L("SAVED|" + outPath);
                     }
                 }
+                if (mode == "rowdel" && !abort) L("ROWDEL_OK|dry=" + dry + "|changed=" + changed);
                 L("DONE|changed=" + changed + "|mcs=" + mcIds.Count);
             }
             catch (System.Exception ex) { L("ERROR|" + ex); }
+        }
+
+        // Adapter is used only by the explicit rowdel branch; no text replacements run there.
+        sealed class McRowTable : IRowTable
+        {
+            readonly McTable table;
+            public McRowTable(McTable value) { table = value; }
+            public int RowCount { get { return table.Rows.Count; } }
+            public string[] ReadRow(int row)
+            {
+                var values = new string[table.Columns.Count];
+                for (int c = 0; c < values.Length; c++)
+                {
+                    var cell = table[row, c];
+                    if (cell == null) throw new InvalidOperationException("rowdel_unreadable_cell");
+                    values[c] = cell.Value;
+                }
+                return values;
+            }
+            public bool BeginModify() { return table.TryModify(); }
+            public bool Delete(int row) { return table.Rows.Delete(row); }
+            public bool Update() { return table.DbEntity != null && table.DbEntity.Update(); }
         }
 
         static void FixAcad(Transaction tr, ObjectId id, string lay)

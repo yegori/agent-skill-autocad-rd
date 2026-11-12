@@ -8,13 +8,12 @@
 param([string[]]$Files = @(), [string]$DwgDir = "", [switch]$Add, [string]$Exclude = '_recover', [string]$PmpPath = "", [ValidateRange(1,1200)][int]$TimeoutSec = 600, [switch]$ControlledRead)
 . "$PSScriptRoot\common.ps1"
 if ($DwgDir) { $Files += @(Get-ChildItem -LiteralPath $DwgDir -Filter *.dwg | Where-Object { -not ($Exclude -and $_.Name -match $Exclude) } | Sort-Object Name | ForEach-Object FullName) }
-$pmp = if ($PmpPath) { $PmpPath } else { [Environment]::ExpandEnvironmentVariables('%APPDATA%\Autodesk\AutoCAD 2024\R24.3\rus\Plotters\PMP Files\DWG To PDF.pmp') }
-$have = @()
-if (Test-Path $pmp) {
-  $j = (Get-Content $pmp -Raw -Encoding utf8) -replace '^[^\r\n]*\r?\n', '' | ConvertFrom-Json
-  $sz = $j.data.udm.media.size
-  if ($sz) { $have = @($sz.PSObject.Properties | ForEach-Object { $_.Value.name }) }
-}
+. "$PSScriptRoot\pmp_paths.ps1"
+$pmpInfo = Get-PmpCatalog -Path $PmpPath -Inspect
+if ($Add -and $pmpInfo.status -eq 'ambiguous') { throw "pmp_ambiguous: укажите -PmpPath: $($pmpInfo.existing -join '; ')" }
+if ($Add -and $pmpInfo.status -ne 'found') { throw 'pmp_missing: -Add требует существующий PMP; укажите -PmpPath' }
+if ($pmpInfo.status -ne 'found') { Write-Host "PMP $($pmpInfo.status); стандартные форматы не блокируются, нестандартные не подтверждены. Укажите -PmpPath." }
+$pmp = $pmpInfo.path
 $w = Join-Path $WorkRoot "papers"; Remove-Item $w -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force $w | Out-Null
 $rows = @()
@@ -55,17 +54,28 @@ foreach ($f in $Files) {
   if (-not (Test-Path $txt)) { $rows += [pscustomobject]@{ File = (Split-Path $f -Leaf); Layout = "?"; Paper = "?"; Device = "?"; Status = "!!! не прочитан" }; continue }
   foreach ($l in Get-Content $txt -Encoding utf8) {
     $lay, $paper, $dev = $l -split '\|', 3
-    $st = if ($paper -like 'UserDefined*') { if ($have -contains $paper) { "есть на ПК" } else { "НЕТ НА ПК" } } else { "стандартный" }
+    $match = if ($paper -like 'UserDefined*') { if ($pmpInfo.status -ne 'found') { 'unresolved' } else { Get-PmpPaperMatch $pmpInfo $paper } } else { 'standard' }
+    $st = switch ($match) {
+      'exact_name' { 'есть на ПК' }
+      'dimensions_only' { 'размер есть; имя носителя не подтверждено' }
+      'missing' { 'НЕТ НА ПК' }
+      'unresolved' { 'НЕТ ПОДТВЕРЖДЕНИЯ PMP' }
+      default { 'стандартный' }
+    }
     if ($dev -and $dev -ne 'DWG To PDF.pc3') { $st += "; плоттер не DWG To PDF" }
     $rows += [pscustomobject]@{ File = (Split-Path $f -Leaf); Layout = $lay; Paper = $paper; Device = $dev; Status = $st }
   }
   Remove-Item $c -ErrorAction SilentlyContinue
 }
-$missing = @($rows | Where-Object { $_.Status -like 'НЕТ НА ПК*' } | ForEach-Object Paper | Sort-Object -Unique)
+$missing = @($rows | Where-Object { $_.Status -like 'НЕТ *' } | ForEach-Object Paper | Sort-Object -Unique)
 $global:PaperMissing = $missing
 $rows | Format-Table -AutoSize | Out-String -Width 250 | Write-Host
 if ($missing) {
   Write-Host ("Нет на этом ПК: " + ($missing -join "; "))
-  if ($Add) { python -I -X utf8 "$PSScriptRoot\add_pmp_size.py" @missing @(if ($PmpPath) { "--pmp"; $PmpPath }) | Write-Host; $global:PaperMissing = @() }
+  if ($Add) {
+    python -I -X utf8 "$PSScriptRoot\add_pmp_size.py" @missing --pmp $pmp | Write-Host
+    if ($LASTEXITCODE -ne 0) { throw 'pmp_add_failed: PaperMissing сохранён' }
+    $global:PaperMissing = @()
+  }
   else { Write-Host "Добавить: повторить с -Add (или python add_pmp_size.py ""<имя>"")" }
-} else { Write-Host "Все форматы есть на этом ПК." }
+} else { Write-Host "Отсутствующие размеры не выявлены. Совпадение размера не подтверждает имя носителя или качество печати." }

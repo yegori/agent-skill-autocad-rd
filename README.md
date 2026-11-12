@@ -66,6 +66,10 @@ claude plugin install rd-ci@rd-ci-arkhyz
 ```text
 python -I scripts/check_package.py
 claude plugin validate .
+python -I -m unittest discover -s scripts -p test_pmp_catalog.py -q
+pwsh -NoProfile -File scripts/test_pmp_paths.ps1
+pwsh -NoProfile -File scripts/test_rowdel.ps1
+pwsh -NoProfile -File scripts/test_rowdel_wrapper.ps1
 python -I -m unittest discover -s scripts -p test_stage_plan.py -q
 pwsh -NoProfile -File scripts/test_txtfix_process.ps1
 python -I -m unittest discover -s scripts -p test_resource_inventory.py -q
@@ -76,7 +80,9 @@ pwsh -NoProfile -File scripts/test_dependency_probe.ps1
 pwsh -NoProfile -File scripts/test_controlled_plot.ps1
 ```
 
-PowerShell test-скрипты используют только фиктивные native процессы, не Autodesk/DWG/MultiCAD.
+PowerShell test-скрипты используют фиктивные native процессы и synthetic файлы, не запускают Autodesk/DWG/MultiCAD.
+`test_rowdel.ps1` дополнительно компилирует плагин против установленного SDK при наличии ссылок, но не загружает сборки поставщика и не открывает DWG.
+Удаление строк СПДС ещё требует отдельной native/PDF/proxy приёмки.
 `run_txtfix` назначает приостановленный GUI-процесс в собственный Job до первого выполнения; источники этим не разрешается менять.
 
 На рабочем месте перед DWG: `pwsh -File toolkit/check_env.ps1 -Build`.

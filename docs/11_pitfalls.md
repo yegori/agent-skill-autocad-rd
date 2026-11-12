@@ -121,7 +121,7 @@
 ## Печать в PDF
 
 - `(command "_.-PLOT" "_N" "" "" "DWG To PDF.pc3" "<файл>" "_N" "_Y")` — по сохранённым параметрам текущего макета (CTAB).
-- «**Нет подходящего носителя**» в логе означает, что в макете нестандартный формат (например «UserDefinedMetric (1189.00 x 420.00мм)»), которого нет в `%APPDATA%\Autodesk\AutoCAD 2024\R24.3\rus\Plotters\PMP Files\DWG To PDF.pmp`. PMP — JSON после строки-заголовка: добавить запись в `udm.media.description` и `udm.media.size`, имя (`name`) — точно как в макете. Сначала сделать резервную копию PMP.
+- «**Нет подходящего носителя**» требует проверить выбранный плоттер, его PMP и сопоставление носителя; наличие файла в папке другого продукта не помогает. PMP — JSON после строки-заголовка, пользовательские форматы в `udm.media.description` и `udm.media.size`. Не добавлять формат автоматически по одному несовпадению имени: Civil 3D может использовать `User-1` при том же размере (см. ниже).
 - Project xrefs должны разрешаться внутри selected issue (произвольные internal subfolders допустимы), относительно каждой referring DWG. Relative portability/containment и existence проверяются отдельно; outside target — finding даже при наличии файла. Fonts/PC3/CTB — environment, не project xrefs.
 - Перепривязка на NEW copy — отдельный write/SaveAs допуск, не наследие read/plot acceptance. Новый exact THREE-map candidate (`18_prepared_xref_copy.md`) не открывает old targets и не ищет basename; SaveAs может пересериализовать proxy/поля, поэтому source/output SHA не доказывают semantic identity/качество. Native compile/prepare → derived read → plot acceptance ещё требуются.
 - Старый рецепт PDF из Word `Documents.Open` → `Content.Find.Execute(…, 2)` → `ExportAsFixedFormat(pdf, 17)` небезопасен без own-instance ownership/cleanup, macro/link guards, exact counts и no-replace publication. `make_cover.ps1` теперь только явный offline `-PreflightOnly`, default native заблокирован. Отдельный `make_cover_draft.ps1` — direct own-Word/NativeOM controlled draft candidate с watchdog/private Job, ещё НЕ native accepted; `19_safe_cover.md`. Find.Execute boolean не доказывает число замен/полноту stories; outer Job не доказывает containment Office brokers.
@@ -159,6 +159,46 @@
 - Genuine known A4 в disconnected: stage verify до/после, два PDF = reference по рендеру,
   67 protected/28 Plotters прежние, outer Job пуст без termination. 653 declared font/Plotters bindings — не discovery,
   ~2.1 секунды measured print — не cold/family calibration. Ограничения/API/11+5 checks — docs/16_staging_plot.md.
+
+### PMP AutoCAD / Civil 3D и имена User-1 (12.11.2026, issue #1)
+
+- `pmp_catalog.py` — общий read-only resolver для `check_env`, `check_papers`, `inspect_resources` и `add_pmp_size`.
+  Приоритет: явный `-PmpPath`/`--pmp`; затем `PrinterDescDir` текущих (`CurProfile`) зарегистрированных продуктов
+  `HKCU/Software/Autodesk/AutoCAD/R24.3`; при отсутствии таких путей — известные `AutoCAD 2024/R24.3` и `C3D 2024`, `rus`/`enu`.
+  Это не определение профиля запущенного CAD. Несколько разных путей текущих профилей (даже если один PMP отсутствует)
+  либо несколько найденных fallback PMP — неоднозначность: для записи обязателен явный путь.
+  Отсутствующий явный путь не заменяется другим. Registry и каталоги автоматически не создаются/не меняются.
+- Read-only проверка стандартного ISO/ANSI не блокируется отсутствующим/неоднозначным PMP; пользовательский носитель при этом не подтверждён.
+  `check_env` сохраняет optional warning. `inspect_resources -PmpPath …` поддерживает явный выбор; dimension-only/неоднозначность остаются `unknown`, не допуском к печати.
+- При `size.name=User-1` размеры ищутся в `localized_name` либо bounds соответствующей `description`.
+  Допуск 0,05 мм по каждой стороне; ориентация не переставляется. Результат «размер есть; имя носителя не подтверждено»
+  не равен проверке печати и не разрешает менять сохранённые plot settings. `add_pmp_size` не добавляет дубликат такого размера.
+- Запись только явно через `-Add`/`add_pmp_size`; до неё все имена валидируются, делается проверенная уникальная резервная копия.
+  Неудачный writer не очищает `PaperMissing`. Тесты используют только временные synthetic PMP и fake metadata reader:
+  `python -I -m unittest discover -s scripts -p test_pmp_catalog.py`, `pwsh -NoProfile -File scripts/test_pmp_paths.ps1`.
+
+### Удаление строк таблицы СПДС (12.11.2026, issue #2)
+
+```text
+pwsh -File toolkit/spds_text/run_txtfix.ps1 -Files "<один DWG>" -Mode rowdel -RowDel "2A49D:5=ожидаемый текст;2A49D:8=другой текст" -Dry
+```
+
+- `row` — индекс с нуля из выгрузки ячеек `cell r,c`, не печатный номер строки. Handle относится только к выбранному DWG;
+  разрешён ровно один входной DWG. Таблицы ищутся на Model/макетах, без обхода вложенных блоков и xref.
+  `-Find/-Pairs`, filters и другие режимы с rowdel не совмещаются.
+- Для каждой строки требуется непустая подстрока её исходного текста (без учёта регистра, **не regex**).
+  `;` разделяет запросы, `=` после первого входит в условие; условие с `;` этим компактным синтаксисом не представляется.
+  Повтор `handle:row`, пустой guard, неверный индекс/handle отклоняются до CAD. Полный план проверяется в native ещё раз.
+- Сначала читаются все целевые таблицы/строки: отсутствующий объект, нечитаемая ячейка или несовпадение guard запрещают любую модификацию.
+  Удаление — по убыванию индексов через `McTable.Rows.Delete`; проверяются результат, уменьшение числа строк, `DbEntity.Update`
+  и сохранность текстов всех оставшихся строк. Сбой любой цели запрещает SaveAs **всего файла**, даже после уже выполненного удаления в памяти.
+- `-Dry` не вызывает TryModify/Delete/Update/SaveAs. Без `-Dry` новая исправленная копия появляется в уникальной `txtfix_rowdel_<guid>`;
+  ROWDEL пишет исходную строку, план/результат, ошибки сохраняются. Для `-Apply` дополнительно требуются полное success/save evidence,
+  неизменный SHA исходника со времени снимка и проверенная резервная копия. Унаследованный TXT_ROWDEL не активирует другой режим.
+- Новый режим пока **не принят на реальном DWG**: pure/fake tests и успешная ABI-компиляция не доказывают корректность merged cells,
+  перестроения таблиц, proxy graphics и PDF. До работы на исходниках: `-Dry` → отдельная копия без `-Apply` → печать/сравнение и проверка
+  псевдоштриховок → согласование пользователя. Массовые изменения по-прежнему начинают с одного самого большого файла.
+  Изолированные проверки: `scripts/test_rowdel.ps1`, `scripts/test_rowdel_wrapper.ps1`; AutoCAD они не запускают.
 
 ## PDF-проверка
 
