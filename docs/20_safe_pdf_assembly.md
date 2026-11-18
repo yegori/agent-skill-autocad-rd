@@ -75,8 +75,8 @@ metadata/attachments/forms/digital signatures либо полной fidelity/а�
 ## Manifest / QA
 
 Drawing merged PDF — `artifact_paths`; JSON assembly sidecar — `report_paths` (это не report PDF).
-Caller создаёт orchestrator manifest по [13_orchestrator.md](13_orchestrator.md) отдельно после QA; CLI status
-не меняет старые jobs/flags и не заменяет этот manifest. В `files_only` Python/PDF-tool запрещён.
+Для сервисного JSON-задания caller создаёт orchestrator manifest по [13_orchestrator.md](13_orchestrator.md) отдельно после QA; CLI status
+не меняет старые jobs/flags и не заменяет этот manifest. В ручной проектной/Orca-задаче caller оформляет отчёт и завершение по её контракту; использование API не требует искусственного job_id/result_file и не отменяет обязательные exit0/retained result/QA. В `files_only` Python/PDF-tool запрещён.
 Проверить порядок/число/форматы/текст/визуальную сохранность уже нового output в отдельно разрешённом scope.
 Не смешивать разные версии или exploratory листы как approved revision без выбора инженера.
 

@@ -53,7 +53,8 @@ def check():
                  '07_open_questions.md'):
         assert not (ROOT / 'docs' / name).exists(), f'Service document duplicated: {name}'
     # Check local Markdown links in maintained package docs (historical snapshots excluded).
-    for doc in [ROOT / 'README.md', *(ROOT / 'docs').glob('*.md')]:
+    check_set = ROOT / 'skills' / 'check-set'
+    for doc in [ROOT / 'README.md', *(ROOT / 'docs').glob('*.md'), *check_set.rglob('*.md')]:
         for target in re.findall(r'\]\(([^)]+)\)', doc.read_text(encoding='utf-8')):
             if '://' in target or target.startswith('#'):
                 continue
